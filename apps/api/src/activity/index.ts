@@ -3,7 +3,10 @@ import { describeRoute, resolver, validator } from "hono-openapi";
 import * as v from "valibot";
 import { subscribeToEvent } from "../events";
 import { activitySchema } from "../schemas";
-import { requireWorkspacePermission } from "../utils/require-workspace-permission";
+import {
+  hasWorkspacePermission,
+  requireWorkspacePermission,
+} from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createActivity from "./controllers/create-activity";
 import createComment from "./controllers/create-comment";
@@ -165,7 +168,12 @@ const activity = new Hono<{
     async (c) => {
       const { activityId } = c.req.valid("json");
       const userId = c.get("userId");
-      const deletedComment = await deleteComment(userId, activityId);
+      const canModerate = await hasWorkspacePermission(c, { task: ["delete"] });
+      const deletedComment = await deleteComment(
+        userId,
+        activityId,
+        canModerate,
+      );
       return c.json(deletedComment);
     },
   );

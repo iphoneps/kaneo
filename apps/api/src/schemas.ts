@@ -65,6 +65,7 @@ export const activitySchema = v.object({
   externalUserAvatar: v.nullable(v.string()),
   externalSource: v.nullable(v.string()),
   externalUrl: v.nullable(v.string()),
+  commentSource: v.optional(v.picklist(["comment", "activity"] as const)),
 });
 
 export const timeEntrySchema = v.object({

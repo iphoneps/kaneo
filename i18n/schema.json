@@ -4169,6 +4169,21 @@
 						"editPlaceholder": {
 							"type": "string"
 						},
+						"delete": {
+							"type": "string"
+						},
+						"deleteConfirmTitle": {
+							"type": "string"
+						},
+						"deleteConfirmDescription": {
+							"type": "string"
+						},
+						"deleted": {
+							"type": "string"
+						},
+						"failedToDelete": {
+							"type": "string"
+						},
 						"save": {
 							"type": "string"
 						},

@@ -1,14 +1,22 @@
 import { client } from "@kaneo/libs";
-import type { InferRequestType } from "hono/client";
 
-export type DeleteCommentRequest = InferRequestType<
-  (typeof client)["activity"]["comment"]["$delete"]
->["json"];
+export type CommentSource = "comment" | "activity";
 
-async function deleteComment({ activityId }: DeleteCommentRequest) {
-  const response = await client.activity.comment.$delete({
-    json: { activityId },
-  });
+export type DeleteCommentRequest = {
+  commentId: string;
+  // Which store the comment lives in, so we hit the right endpoint:
+  // "comment" -> /comment/:id (API/MCP comments), "activity" -> /activity
+  // (web-created comments). Defaults to "activity" for back-compat.
+  source?: CommentSource;
+};
+
+async function deleteComment({ commentId, source }: DeleteCommentRequest) {
+  const response =
+    source === "comment"
+      ? await client.comment[":id"].$delete({ param: { id: commentId } })
+      : await client.activity.comment.$delete({
+          json: { activityId: commentId },
+        });
 
   if (!response.ok) {
     const error = await response.text();

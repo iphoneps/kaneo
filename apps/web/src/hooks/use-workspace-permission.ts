@@ -17,6 +17,10 @@ const CAPABILITIES = {
   createProjects: { project: ["create"] },
   deleteProjects: { project: ["delete"] },
   manageTasks: { task: ["create", "update", "delete"] },
+  // Comment moderation piggybacks on task:delete — members lack it (so they
+  // can only delete their own comments), admins/owners (and custom roles
+  // granted it) have it and may delete any comment. Mirrors the server check.
+  moderateComments: { task: ["delete"] },
   assignTasks: { task: ["assign"] },
   manageLabels: { label: ["create", "update", "delete"] },
   manageWorkspace: { workspace: ["update", "manage_settings"] },
@@ -90,6 +94,7 @@ export function useWorkspacePermission() {
       canCreateProjects: () => can.createProjects,
       canDeleteProjects: () => can.deleteProjects,
       canManageTasks: () => can.manageTasks,
+      canModerateComments: () => can.moderateComments,
       canAssignTasks: () => can.assignTasks,
       canManageLabels: () => can.manageLabels,
       canManageWorkspace: () => can.manageWorkspace,

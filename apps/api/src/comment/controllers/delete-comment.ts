@@ -5,7 +5,7 @@ import { commentTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 
-async function deleteComment(userId: string, id: string) {
+async function deleteComment(userId: string, id: string, canModerate = false) {
   const [existing] = await db
     .select({
       userId: commentTable.userId,
@@ -20,9 +20,11 @@ async function deleteComment(userId: string, id: string) {
     throw new HTTPException(404, { message: "Comment not found" });
   }
 
-  if (existing.userId !== userId) {
+  // Members may delete only their own comments; workspace admins/owners
+  // (canModerate === true) may delete any comment.
+  if (existing.userId !== userId && !canModerate) {
     throw new HTTPException(403, {
-      message: "Only the author can delete this comment",
+      message: "Only the author or a workspace admin can delete this comment",
     });
   }
 

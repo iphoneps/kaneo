@@ -26,6 +26,7 @@ type ActivityItem = {
   externalUserAvatar?: string | null;
   externalSource?: string | null;
   externalUrl?: string | null;
+  commentSource?: "comment" | "activity";
 };
 
 function getEventDataRecord(
@@ -459,6 +460,7 @@ function Activity({
             createdAt={activity.createdAt}
             externalSource={activity.externalSource}
             externalUrl={activity.externalUrl}
+            commentSource={activity.commentSource}
           />
         </TimelineContent>
       </TimelineItem>

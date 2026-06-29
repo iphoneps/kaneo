@@ -27,11 +27,18 @@ async function getActivitiesFromTaskId(taskId: string) {
     externalUserAvatar: null,
     externalSource: null,
     externalUrl: null,
+    // Marks where this row lives so the UI can route edits/deletes to the
+    // right endpoint: "comment" -> /comment/:id, "activity" -> /activity.
+    commentSource: "comment" as const,
   }));
 
-  const merged = [...activities, ...commentActivities].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-  );
+  const merged = [
+    ...activities.map((activity) => ({
+      ...activity,
+      commentSource: "activity" as const,
+    })),
+    ...commentActivities,
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   merged.forEach((x) => {
     if (x.content) {

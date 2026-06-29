@@ -1,9 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Github, Pencil } from "lucide-react";
+import { ExternalLink, Github, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +26,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { CommentSource } from "@/fetchers/comment/delete-comment";
+import useDeleteComment from "@/hooks/mutations/comment/use-delete-comment";
 import useUpdateComment from "@/hooks/mutations/comment/use-update-comment";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
@@ -34,6 +46,7 @@ type CommentCardProps = {
   createdAt: string;
   externalSource?: string | null;
   externalUrl?: string | null;
+  commentSource?: CommentSource;
 };
 
 export default function CommentCard({
@@ -44,15 +57,25 @@ export default function CommentCard({
   createdAt,
   externalSource,
   externalUrl,
+  commentSource,
 }: CommentCardProps) {
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
+  const { canModerateComments } = useWorkspacePermission();
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const { mutateAsync: updateComment, isPending } = useUpdateComment();
+  const { mutateAsync: deleteComment, isPending: isDeleting } =
+    useDeleteComment(taskId);
   const queryClient = useQueryClient();
 
-  const canEdit = currentUser?.id === user?.id;
+  const isAuthor = Boolean(currentUser?.id) && currentUser?.id === user?.id;
+  const isExternal = Boolean(externalSource);
+  const canEdit = isAuthor;
+  // Members delete their own; admins/owners (task:delete) delete any. Never
+  // offer deletion for synced external (e.g. GitHub) comments.
+  const canDelete = !isExternal && (isAuthor || canModerateComments());
   const isFromGitHub = externalSource === "github";
   const githubProfileUrl =
     isFromGitHub && user?.name ? `https://github.com/${user.name}` : null;
@@ -102,6 +125,19 @@ export default function CommentCard({
     taskId,
     updateComment,
   ]);
+
+  const handleDelete = useCallback(async () => {
+    try {
+      await deleteComment({
+        commentId,
+        source: commentSource ?? "activity",
+      });
+      toast.success(t("activity:comment.deleted"));
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+      toast.error(t("activity:comment.failedToDelete"));
+    }
+  }, [commentId, commentSource, deleteComment, t]);
 
   return (
     <TooltipProvider>
@@ -196,23 +232,69 @@ export default function CommentCard({
           )}
         </div>
 
-        {canEdit && !isEditing && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="absolute top-2 right-2 h-6 w-6 rounded-md p-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{t("activity:comment.edit")}</p>
-            </TooltipContent>
-          </Tooltip>
+        {!isEditing && (canEdit || canDelete) && (
+          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            {canEdit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEdit}
+                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">{t("activity:comment.edit")}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsDeleteOpen(true)}
+                    className="h-6 w-6 rounded-md p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">{t("activity:comment.delete")}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         )}
+
+        <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("activity:comment.deleteConfirmTitle")}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("activity:comment.deleteConfirmDescription")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogClose>
+                <Button variant="outline" size="sm">
+                  {t("common:actions.cancel")}
+                </Button>
+              </AlertDialogClose>
+              <AlertDialogClose onClick={handleDelete}>
+                <Button variant="destructive" size="sm" disabled={isDeleting}>
+                  {t("common:actions.delete")}
+                </Button>
+              </AlertDialogClose>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="pt-0.5">
           <CommentEditor
