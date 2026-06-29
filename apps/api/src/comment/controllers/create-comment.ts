@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable, taskTable } from "../../database/schema";
+import { commentTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 
 async function createComment(taskId: string, userId: string, content: string) {
@@ -28,11 +28,28 @@ async function createComment(taskId: string, userId: string, content: string) {
     throw new HTTPException(500, { message: "Failed to create comment" });
   }
 
+  const [user] = await db
+    .select({ name: userTable.name })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1);
+
   await publishEvent("comment.created", {
     ...comment,
     taskId: comment.taskId,
     projectId: task.projectId,
     userId,
+  });
+
+  // Notify outbound integrations (Slack/Discord/Telegram/webhook/…). They
+  // subscribe to task.comment_created — the web UI emits it from the activity
+  // controller, but comments created via the API/MCP live in a different
+  // store and must emit it too, or they reach no integration.
+  await publishEvent("task.comment_created", {
+    taskId: comment.taskId,
+    userId,
+    comment: `**${user?.name}** commented:\n> ${content}`,
+    projectId: task.projectId,
   });
 
   return comment;
