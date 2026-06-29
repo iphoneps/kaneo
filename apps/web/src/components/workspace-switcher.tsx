@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-
+import NotificationDropdown from "@/components/notification/notification-dropdown";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -183,8 +183,11 @@ export function WorkspaceSwitcher() {
           </SidebarMenuItem>
         </SidebarMenu>
 
-        <div className="h-7 w-7 shrink-0">
-          <UserAvatar />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <NotificationDropdown />
+          <div className="h-7 w-7 shrink-0">
+            <UserAvatar />
+          </div>
         </div>
       </div>
 

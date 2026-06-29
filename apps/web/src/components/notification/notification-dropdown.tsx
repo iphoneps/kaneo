@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,9 +27,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { shortcuts } from "@/constants/shortcuts";
+import getTask from "@/fetchers/task/get-task";
 import useClearNotifications from "@/hooks/mutations/notification/use-clear-notifications";
 import useMarkAllNotificationsAsRead from "@/hooks/mutations/notification/use-mark-all-notifications-as-read";
+import useMarkNotificationAsRead from "@/hooks/mutations/notification/use-mark-notification-as-read";
 import useGetNotifications from "@/hooks/queries/notification/use-get-notifications";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
@@ -144,9 +149,50 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
 
     const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
     const { mutate: clearAll } = useClearNotifications();
+    const { mutate: markAsRead } = useMarkNotificationAsRead();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const { data: activeWorkspace } = useActiveWorkspace();
 
     const unreadNotifications = notifications?.filter((n) => !n.isRead) || [];
     const hasNotifications = notifications && notifications.length > 0;
+
+    const handleNotificationClick = async (notification: Notification) => {
+      if (!notification.isRead) {
+        markAsRead(notification.id);
+      }
+      setIsOpen(false);
+
+      // Deep-link to the task this notification is about. We only carry the
+      // taskId, so resolve its project via getTask and open it in the active
+      // workspace's board (where the bell lives).
+      if (
+        notification.resourceType !== "task" ||
+        !notification.resourceId ||
+        !activeWorkspace?.id
+      ) {
+        return;
+      }
+
+      try {
+        const task = await queryClient.fetchQuery({
+          queryKey: ["task", notification.resourceId],
+          queryFn: () => getTask(notification.resourceId as string),
+        });
+        if (task?.projectId) {
+          navigate({
+            to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
+            params: {
+              workspaceId: activeWorkspace.id,
+              projectId: task.projectId,
+            },
+            search: { taskId: notification.resourceId },
+          });
+        }
+      } catch {
+        // Task may have been deleted — just leave the dropdown closed.
+      }
+    };
 
     useImperativeHandle(ref, () => ({
       toggle: () => setIsOpen(!isOpen),
@@ -236,10 +282,12 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                 </div>
               ) : (
                 notifications.map((notification) => (
-                  <div
+                  <button
+                    type="button"
                     key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
                     className={cn(
-                      "px-3 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors",
+                      "block w-full cursor-pointer px-3 py-3 border-b border-border/50 text-left hover:bg-accent/50 transition-colors",
                       !notification.isRead && "bg-accent/20",
                     )}
                   >
@@ -263,7 +311,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
