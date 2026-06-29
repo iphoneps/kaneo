@@ -42,7 +42,12 @@ async function getActivitiesFromTaskId(taskId: string) {
 
   merged.forEach((x) => {
     if (x.content) {
-      x.content = x.content.replace(/\n+/g, "\n");
+      // Collapse only runs of 3+ newlines; keep blank lines (\n\n) so that
+      // markdown paragraph breaks survive. Flattening every run to a single
+      // \n turned paragraph breaks into <br> and let lists swallow the
+      // following paragraph (lazy continuation), which is what made comments
+      // render as one cramped block.
+      x.content = x.content.replace(/\n{3,}/g, "\n\n");
     }
   });
 

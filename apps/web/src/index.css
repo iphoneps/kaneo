@@ -442,7 +442,15 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-tiptap-content .ProseMirror p {
-    margin: 0.2rem 0;
+    margin: 0.6em 0;
+  }
+
+  .kaneo-tiptap-content .ProseMirror > :first-child {
+    margin-top: 0;
+  }
+
+  .kaneo-tiptap-content .ProseMirror > :last-child {
+    margin-bottom: 0;
   }
 
   .kaneo-tiptap-content .ProseMirror h1,
@@ -470,7 +478,7 @@ input:-webkit-autofill:active {
 
   .kaneo-tiptap-content .ProseMirror ul,
   .kaneo-tiptap-content .ProseMirror ol {
-    margin: 0.3rem 0;
+    margin: 0.6em 0;
     padding-inline-start: 1.35rem;
   }
 
@@ -499,7 +507,7 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-tiptap-content .ProseMirror li {
-    margin: 0.1rem 0;
+    margin: 0.22em 0;
   }
 
   .kaneo-tiptap-content .ProseMirror ul[data-type="taskList"] {
@@ -1022,20 +1030,52 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-comment-editor-prose p {
-    margin: 0;
+    margin: 0.6em 0;
+  }
+
+  /* No leading/trailing gap, so the content sits flush with its container
+     while interior blocks keep their breathing room. */
+  .kaneo-comment-editor-prose > :first-child {
+    margin-top: 0;
+  }
+
+  .kaneo-comment-editor-prose > :last-child {
+    margin-bottom: 0;
   }
 
   .kaneo-comment-editor-prose h1,
   .kaneo-comment-editor-prose h2,
   .kaneo-comment-editor-prose h3 {
-    margin: 0.12rem 0 0;
-    line-height: 1.32;
+    margin: 1.2em 0 0.5em;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+
+  .kaneo-comment-editor-prose h1 {
+    font-size: 1.2rem;
+  }
+
+  .kaneo-comment-editor-prose h2 {
+    font-size: 1.1rem;
+  }
+
+  .kaneo-comment-editor-prose h3 {
+    font-size: 1.01rem;
   }
 
   .kaneo-comment-editor-prose ul,
   .kaneo-comment-editor-prose ol {
-    margin: 0.12rem 0 0;
-    padding-inline-start: 1.2rem;
+    margin: 0.6em 0;
+    padding-inline-start: 1.35rem;
+  }
+
+  .kaneo-comment-editor-prose blockquote {
+    margin: 0.7em 0;
+    padding-left: 0.85rem;
+    border-left: 3px solid color-mix(in srgb, var(--border) 80%, transparent);
+    color: color-mix(in srgb, var(--foreground) 78%, transparent);
   }
 
   .kaneo-comment-editor-prose ul {
@@ -1063,7 +1103,7 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-comment-editor-prose li {
-    margin: 0.08rem 0;
+    margin: 0.22em 0;
   }
 
   .kaneo-comment-editor-prose ul[data-type="taskList"] {
@@ -1138,7 +1178,7 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-comment-editor-prose pre {
-    margin: 0.12rem 0 0;
+    margin: 0.7em 0;
     border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
     border-radius: 0.45rem;
     background: color-mix(in srgb, var(--card) 80%, transparent);
@@ -1150,7 +1190,7 @@ input:-webkit-autofill:active {
   }
 
   .kaneo-comment-editor-prose [data-type="kaneo-embed"] {
-    margin: 0.12rem 0 0;
+    margin: 0.7em 0;
     border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
     border-radius: calc(var(--radius) - 2px);
     background: color-mix(in srgb, var(--accent) 28%, transparent);
@@ -1194,7 +1234,7 @@ input:-webkit-autofill:active {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    margin: 0.12rem 0 0;
+    margin: 0.7em 0;
     border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
     border-radius: 0.45rem;
     overflow: hidden;
