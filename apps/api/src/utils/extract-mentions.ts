@@ -18,6 +18,20 @@ export function extractMentionUserIds(
   return [...ids];
 }
 
+// Turn inline kaneo-* tokens into readable text without otherwise touching the
+// markdown: mention tokens become "@Name", other kaneo-* tokens are dropped.
+// Used for outbound integration messages (Slack/Discord/…) so a raw
+// <kaneo-mention .../> tag never leaks into the notification text.
+export function tokensToPlainText(markdown: string | null | undefined): string {
+  if (!markdown) return "";
+  return markdown
+    .replace(
+      /<kaneo-mention\s+[^>]*?\blabel="([^"]*)"[^>]*?\/?>/g,
+      (_m, label) => `@${label}`,
+    )
+    .replace(/<kaneo-[a-z-]+\s+[^>]*?\/?>/g, "");
+}
+
 // Build a short plain-text preview for the notification body: turn mention
 // tokens into "@Name", drop any other kaneo-* inline tokens, strip the most
 // common markdown markers, collapse whitespace, and truncate. Intentionally

@@ -6,6 +6,7 @@ import { publishEvent } from "../../events";
 import notifyMentions from "../../notification/controllers/notify-mentions";
 import {
   extractMentionUserIds,
+  tokensToPlainText,
   toPlainSnippet,
 } from "../../utils/extract-mentions";
 
@@ -39,7 +40,7 @@ async function createComment(taskId: string, userId: string, content: string) {
   if (task) {
     await publishEvent("task.comment_created", {
       ...activity,
-      comment: `**${user?.name}** commented:\n> ${content}`,
+      comment: `**${user?.name}** commented:\n> ${tokensToPlainText(content)}`,
       projectId: task.projectId,
     });
   }
