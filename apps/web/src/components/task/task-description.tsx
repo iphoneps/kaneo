@@ -36,6 +36,8 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { bundledLanguages, type Highlighter } from "shiki";
+import MentionMenu from "@/components/activity/mention/mention-menu";
+import { useMentionMenu } from "@/components/activity/mention/use-mention-menu";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogPopup } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -65,6 +67,7 @@ import { uploadTaskImage } from "@/lib/upload-task-image";
 import { AttachmentCard } from "./extensions/attachment-card";
 import { EmbedBlock } from "./extensions/embed-block";
 import { KaneoIssueLink } from "./extensions/kaneo-issue-link";
+import { KaneoMention } from "./extensions/kaneo-mention";
 import {
   SHIKI_CODEBLOCK_REFRESH_META,
   ShikiCodeBlock,
@@ -274,6 +277,9 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
   const hasHydratedRef = useRef(false);
   const isSyncingExternalContentRef = useRef(false);
   const latestSyncedMarkdownRef = useRef("");
+  const mentionKeyHandlerRef = useRef<
+    ((event: KeyboardEvent) => boolean) | null
+  >(null);
   const hoveredCodeBlockElementRef = useRef<HTMLElement | null>(null);
   const [hoveredCodeBlock, setHoveredCodeBlock] =
     useState<HoveredCodeBlock | null>(null);
@@ -569,6 +575,7 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
         EmbedBlock,
         AttachmentCard,
         KaneoIssueLink,
+        KaneoMention,
         TaskList,
         Image.configure({
           HTMLAttributes: {
@@ -752,6 +759,13 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     },
     [getOverlayPosition, handleAssetFileUpload, t, toShikiLanguage],
   );
+
+  const mention = useMentionMenu({
+    editor,
+    getCoords: (activeEditor, pos) =>
+      getOverlayPosition(activeEditor.view, pos),
+  });
+  mentionKeyHandlerRef.current = mention.onKeyDown;
 
   useEffect(() => {
     if (!editor || !shikiHighlighter) return;
@@ -1100,6 +1114,8 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
         }
         return;
       }
+
+      if (mentionKeyHandlerRef.current?.(event)) return;
 
       const current = slashMenuRef.current;
       if (!editor || !current || !editor.isFocused) return;
@@ -1670,6 +1686,19 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
             </div>
           )}
         </div>
+      )}
+
+      {editor && mention.menu && (
+        <MentionMenu
+          state={mention.menu}
+          members={mention.members}
+          position="absolute"
+          emptyLabel={t("tasks:detail.editor.mention.empty", {
+            defaultValue: "No people",
+          })}
+          onSelect={mention.selectMember}
+          onHover={mention.setSelectedIndex}
+        />
       )}
 
       {editor && embedComposer && (

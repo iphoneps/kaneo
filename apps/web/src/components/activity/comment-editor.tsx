@@ -30,9 +30,12 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { bundledLanguages, type Highlighter } from "shiki";
+import MentionMenu from "@/components/activity/mention/mention-menu";
+import { useMentionMenu } from "@/components/activity/mention/use-mention-menu";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
 import { EmbedBlock } from "@/components/task/extensions/embed-block";
 import { KaneoIssueLink } from "@/components/task/extensions/kaneo-issue-link";
+import { KaneoMention } from "@/components/task/extensions/kaneo-mention";
 import {
   SHIKI_CODEBLOCK_REFRESH_META,
   ShikiCodeBlock,
@@ -191,6 +194,11 @@ export default function CommentEditor({
   const onCancelShortcutRef = useRef(onCancelShortcut);
   onSubmitShortcutRef.current = onSubmitShortcut;
   onCancelShortcutRef.current = onCancelShortcut;
+  // Bridges the @-mention key handling into the editor's handleKeyDown, which
+  // is defined inside useEditor (before the mention hook exists).
+  const mentionKeyHandlerRef = useRef<
+    ((event: KeyboardEvent) => boolean) | null
+  >(null);
   const pendingImageInsertRef = useRef<{
     editor: Editor;
     range?: SlashRange;
@@ -598,6 +606,7 @@ export default function CommentEditor({
         EmbedBlock,
         AttachmentCard,
         KaneoIssueLink,
+        KaneoMention,
         TaskList,
         Image.configure({
           HTMLAttributes: {
@@ -754,6 +763,9 @@ export default function CommentEditor({
           return true;
         },
         handleKeyDown: (_view, event) => {
+          if (!readOnly && !disabled && mentionKeyHandlerRef.current?.(event)) {
+            return true;
+          }
           if (!readOnly && !disabled && slashMenu) {
             if (event.key === "ArrowDown") {
               event.preventDefault();
@@ -862,6 +874,15 @@ export default function CommentEditor({
     },
     [handleAssetFileUpload, resolvedPlaceholder, toShikiLanguage],
   );
+
+  const mention = useMentionMenu({
+    editor,
+    readOnly,
+    disabled,
+    getCoords: (activeEditor, pos) =>
+      getOverlayPosition(activeEditor.view, pos),
+  });
+  mentionKeyHandlerRef.current = mention.onKeyDown;
 
   useEffect(() => {
     if (!onAttachActionChange) return;
@@ -1677,6 +1698,16 @@ export default function CommentEditor({
             </div>
           )}
         </div>
+      )}
+      {mention.menu && !readOnly && !disabled && (
+        <MentionMenu
+          state={mention.menu}
+          members={mention.members}
+          position={slashMenuPosition}
+          emptyLabel={t("activity:comment.editor.noPeople")}
+          onSelect={mention.selectMember}
+          onHover={mention.setSelectedIndex}
+        />
       )}
       {editor && embedComposer && (
         <div

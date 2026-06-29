@@ -3,7 +3,12 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { activityTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import notifyMentions from "../../notification/controllers/notify-mentions";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import {
+  extractMentionUserIds,
+  toPlainSnippet,
+} from "../../utils/extract-mentions";
 
 async function updateComment(userId: string, id: string, content: string) {
   const [existing] = await db
@@ -45,6 +50,22 @@ async function updateComment(userId: string, id: string, content: string) {
       ...updated,
       projectId: task.projectId,
       userId,
+    });
+  }
+
+  // Only notify users newly mentioned by this edit, not everyone already
+  // mentioned in the previous version.
+  const previousMentions = new Set(extractMentionUserIds(existing.content));
+  const addedMentions = extractMentionUserIds(content).filter(
+    (mentionId) => !previousMentions.has(mentionId),
+  );
+  if (addedMentions.length > 0) {
+    void notifyMentions({
+      mentionedUserIds: addedMentions,
+      actorUserId: userId,
+      taskId: updated.taskId,
+      sourceType: "comment",
+      snippet: toPlainSnippet(content),
     });
   }
 

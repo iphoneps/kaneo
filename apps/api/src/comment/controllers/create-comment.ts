@@ -3,6 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { commentTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import notifyMentions from "../../notification/controllers/notify-mentions";
+import {
+  extractMentionUserIds,
+  toPlainSnippet,
+} from "../../utils/extract-mentions";
 
 async function createComment(taskId: string, userId: string, content: string) {
   const [task] = await db
@@ -50,6 +55,14 @@ async function createComment(taskId: string, userId: string, content: string) {
     userId,
     comment: `**${user?.name}** commented:\n> ${content}`,
     projectId: task.projectId,
+  });
+
+  void notifyMentions({
+    mentionedUserIds: extractMentionUserIds(content),
+    actorUserId: userId,
+    taskId: comment.taskId,
+    sourceType: "comment",
+    snippet: toPlainSnippet(content),
   });
 
   return comment;

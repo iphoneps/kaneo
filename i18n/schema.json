@@ -4323,6 +4323,9 @@
 								"noCommands": {
 									"type": "string"
 								},
+								"noPeople": {
+									"type": "string"
+								},
 								"ariaCommentContent": {
 									"type": "string"
 								},

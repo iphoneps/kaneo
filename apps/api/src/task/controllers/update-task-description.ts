@@ -3,7 +3,12 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import notifyMentions from "../../notification/controllers/notify-mentions";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import {
+  extractMentionUserIds,
+  toPlainSnippet,
+} from "../../utils/extract-mentions";
 
 async function updateTaskDescription({
   id,
@@ -44,6 +49,25 @@ async function updateTaskDescription({
     newDescription: description,
     type: "description_changed",
   });
+
+  // Descriptions save on a debounce, so only notify users newly mentioned by
+  // this change — anyone already mentioned in the previous description is in
+  // the old set and won't be re-notified on each keystroke save.
+  const previousMentions = new Set(
+    extractMentionUserIds(existingTask.description),
+  );
+  const addedMentions = extractMentionUserIds(description).filter(
+    (mentionId) => !previousMentions.has(mentionId),
+  );
+  if (addedMentions.length > 0) {
+    void notifyMentions({
+      mentionedUserIds: addedMentions,
+      actorUserId: currentUserId,
+      taskId: id,
+      sourceType: "description",
+      snippet: toPlainSnippet(description),
+    });
+  }
 
   deleteOrphanedAssets(existingTask.description, description, {
     taskId: id,
