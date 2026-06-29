@@ -105,8 +105,9 @@ export default function CommentCard({
 
     try {
       await updateComment({
-        activityId: commentId,
+        commentId,
         comment: editedContent,
+        source: commentSource ?? "activity",
       });
 
       setIsEditing(false);
@@ -118,6 +119,7 @@ export default function CommentCard({
     }
   }, [
     commentId,
+    commentSource,
     currentUser?.id,
     editedContent,
     queryClient,
