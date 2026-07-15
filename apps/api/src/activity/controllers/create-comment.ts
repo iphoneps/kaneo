@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { activityTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import notifyCommentParticipants from "../../notification/controllers/notify-comment-participants";
 import notifyMentions from "../../notification/controllers/notify-mentions";
 import {
   extractMentionUserIds,
@@ -45,11 +46,20 @@ async function createComment(taskId: string, userId: string, content: string) {
     });
   }
 
+  const mentionedUserIds = extractMentionUserIds(content);
+
   void notifyMentions({
-    mentionedUserIds: extractMentionUserIds(content),
+    mentionedUserIds,
     actorUserId: userId,
     taskId,
     sourceType: "comment",
+    snippet: toPlainSnippet(content),
+  });
+
+  void notifyCommentParticipants({
+    actorUserId: userId,
+    taskId,
+    excludeUserIds: mentionedUserIds,
     snippet: toPlainSnippet(content),
   });
 

@@ -159,10 +159,12 @@ const notification = new Hono<{
 subscribeToEvent<{
   taskId: string;
   userId: string;
+  currentUserId?: string;
   title: string;
   projectId: string;
 }>("task.created", async (data) => {
-  if (data.userId) {
+  // Don't notify the assignee when they created the task themselves.
+  if (data.userId && data.userId !== data.currentUserId) {
     await createNotification({
       userId: data.userId,
       type: "task_created",
@@ -225,7 +227,8 @@ subscribeToEvent<{
   newAssigneeId: string;
   title: string;
 }>("task.assignee_changed", async (data) => {
-  if (data.newAssigneeId) {
+  // Don't notify users who assigned the task to themselves.
+  if (data.newAssigneeId && data.newAssigneeId !== data.userId) {
     await createNotification({
       userId: data.newAssigneeId,
       type: "task_assignee_changed",
