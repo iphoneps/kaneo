@@ -10,6 +10,7 @@ import {
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
 import { parseMentionIds } from "../../utils/parse-mentions";
+import { tokensToPlainText } from "../../utils/tokens-to-plain-text";
 
 async function createComment(taskId: string, userId: string, content: string) {
   const [activity] = await db
@@ -47,7 +48,7 @@ async function createComment(taskId: string, userId: string, content: string) {
   if (task) {
     await publishEvent("comment.created", {
       ...activity,
-      comment: `**${user?.name}** commented:\n> ${content}`,
+      comment: `**${user?.name}** commented:\n> ${tokensToPlainText(content)}`,
       projectId: task.projectId,
     });
   }
