@@ -508,9 +508,29 @@ export const auth = betterAuth({
               ctx?.query?.invitationId ||
               ctx?.headers?.get("x-invitation-id"),
           );
+
+          // An OAuth callback cannot carry our invitationId. The sign-in page
+          // only threads it into `callbackURL` (where the browser lands *after*
+          // auth), and no body, query param or header survives the redirect
+          // through the provider — so on `/callback/*` all three lookups above
+          // are always undefined. Requiring an invitationId there makes social
+          // signup impossible for invited users while DISABLE_REGISTRATION=true.
+          //
+          // Fall back to matching the invitation by email, but only for an
+          // address the provider itself verified. `emailVerified` comes from the
+          // provider profile and defaults to false, so this fails closed: an
+          // unverified provider email is still rejected. We deliberately do NOT
+          // extend this to password signups, where the caller picks the email
+          // freely and an email match would let anyone who knows an invited
+          // address register as them and accept their invitation.
+          const isVerifiedOAuthSignUp =
+            ctx?.path?.startsWith("/callback/") === true &&
+            user.emailVerified === true;
+
           const result = await checkRegistrationAllowed(
             user.email,
             invitationId,
+            { allowEmailMatch: isVerifiedOAuthSignUp },
           );
           if (!result.allowed) {
             throw new APIError("FORBIDDEN", {

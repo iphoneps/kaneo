@@ -16,9 +16,25 @@ type RegistrationCheckResult = {
   };
 };
 
+type RegistrationCheckOptions = {
+  /**
+   * Allow a pending invitation to be matched on `email` alone, without an
+   * `invitationId`.
+   *
+   * Only pass `true` when the email has been verified by a trusted identity
+   * provider. A password signup lets the caller choose any email they like, so
+   * matching on email there would let anyone who knows an invited address
+   * register as that person and accept their invitation.
+   *
+   * See the call site in `auth.ts` for why OAuth signups need this.
+   */
+  allowEmailMatch?: boolean;
+};
+
 export async function checkRegistrationAllowed(
   email?: string,
   invitationId?: string,
+  { allowEmailMatch = false }: RegistrationCheckOptions = {},
 ): Promise<RegistrationCheckResult> {
   const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
 
@@ -29,7 +45,9 @@ export async function checkRegistrationAllowed(
     };
   }
 
-  if (!invitationId) {
+  const canMatchByEmail = allowEmailMatch && Boolean(email);
+
+  if (!invitationId && !canMatchByEmail) {
     return {
       allowed: false,
       reason:
@@ -37,7 +55,9 @@ export async function checkRegistrationAllowed(
     };
   }
 
-  const invitation = await findValidInvitation(email, invitationId);
+  const invitation = await findValidInvitation(email, invitationId, {
+    allowEmailMatch: canMatchByEmail,
+  });
 
   if (!invitation) {
     return {
@@ -57,6 +77,7 @@ export async function checkRegistrationAllowed(
 async function findValidInvitation(
   email?: string,
   invitationId?: string,
+  { allowEmailMatch = false }: RegistrationCheckOptions = {},
 ): Promise<RegistrationCheckResult["invitation"] | null> {
   const now = new Date();
 
@@ -73,7 +94,9 @@ async function findValidInvitation(
     conditions.push(eq(invitationTable.email, email.toLowerCase()));
   }
 
-  if (!invitationId) {
+  // Without an invitationId the email is the only thing narrowing this query,
+  // so it must be both present and trusted.
+  if (!invitationId && !(allowEmailMatch && email)) {
     return null;
   }
 
