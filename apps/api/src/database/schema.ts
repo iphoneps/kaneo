@@ -1029,3 +1029,20 @@ export const organizationRoleRelations = relations(
     }),
   }),
 );
+
+/*
+ * Dynamically-registered MCP OAuth clients (RFC 7591).
+ *
+ * These were previously held in an in-memory Map, so every API restart —
+ * every deploy, crash or scale event — invalidated every client that had
+ * ever registered. Connected MCP clients then failed re-authentication with
+ * `invalid_client` and had to be re-added by hand. Access tokens already
+ * live in `session`, so a live session survived a restart while the ability
+ * to obtain a new one did not.
+ */
+export const mcpOauthClientTable = pgTable("mcp_oauth_client", {
+  clientId: text("client_id").primaryKey(),
+  redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
+  clientName: text("client_name"),
+  issuedAt: timestamp("issued_at", { mode: "date" }).defaultNow().notNull(),
+});

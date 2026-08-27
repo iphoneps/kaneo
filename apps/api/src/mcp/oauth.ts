@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
+import { eq } from "drizzle-orm";
 import db from "../database";
-import { sessionTable } from "../database/schema";
+import { mcpOauthClientTable, sessionTable } from "../database/schema";
 
 type RegisteredClient = {
   clientId: string;
@@ -26,7 +27,17 @@ export type AuthorizationRequest = {
   expiresAt: number;
 };
 
-const clients = new Map<string, RegisteredClient>();
+/*
+ * Registered clients are persisted. They used to live in an in-memory Map, so
+ * every API restart invalidated every client that had ever registered and
+ * connected MCP clients failed re-authentication with `invalid_client`.
+ *
+ * Auth codes and authorization requests stay in memory deliberately: both
+ * expire within minutes and are consumed by the same process that issued
+ * them. If the API is ever run with more than one replica they will need
+ * persisting too, because the authorize and callback legs can land on
+ * different instances.
+ */
 const codes = new Map<string, AuthCode>();
 const authorizationRequests = new Map<string, AuthorizationRequest>();
 const maxAuthorizationRequests = 10_000;
@@ -43,23 +54,45 @@ function pruneAuthorizationRequests(now = Date.now()): void {
   }
 }
 
-export function getClient(clientId: string): RegisteredClient | undefined {
-  return clients.get(clientId);
+export async function getClient(
+  clientId: string,
+): Promise<RegisteredClient | undefined> {
+  const [row] = await db
+    .select()
+    .from(mcpOauthClientTable)
+    .where(eq(mcpOauthClientTable.clientId, clientId))
+    .limit(1);
+
+  if (!row) return undefined;
+
+  return {
+    clientId: row.clientId,
+    redirectUris: row.redirectUris,
+    clientName: row.clientName ?? undefined,
+    issuedAt: Math.floor(row.issuedAt.getTime() / 1000),
+  };
 }
 
-export function registerClient(params: {
+export async function registerClient(params: {
   redirectUris: string[];
   clientName?: string;
-}): RegisteredClient {
+}): Promise<RegisteredClient> {
   const clientId = randomUUID();
-  const client: RegisteredClient = {
+  const issuedAt = new Date();
+
+  await db.insert(mcpOauthClientTable).values({
+    clientId,
+    redirectUris: [...params.redirectUris],
+    clientName: params.clientName ?? null,
+    issuedAt,
+  });
+
+  return {
     clientId,
     redirectUris: [...params.redirectUris],
     clientName: params.clientName,
-    issuedAt: Math.floor(Date.now() / 1000),
+    issuedAt: Math.floor(issuedAt.getTime() / 1000),
   };
-  clients.set(clientId, client);
-  return client;
 }
 
 export function createAuthCode(params: {
