@@ -56,8 +56,8 @@ function isTrustedConsentOrigin(origin: string | undefined): boolean {
   }
 }
 
-export function registerMcpClient(input: ClientRegistrationInput) {
-  const client = registerClient({
+export async function registerMcpClient(input: ClientRegistrationInput) {
+  const client = await registerClient({
     redirectUris: input.redirect_uris,
     clientName: input.client_name,
   });
@@ -73,8 +73,10 @@ export function registerMcpClient(input: ClientRegistrationInput) {
   } as const;
 }
 
-export function beginMcpAuthorization(input: AuthorizationInput): string {
-  const client = getClient(input.client_id);
+export async function beginMcpAuthorization(
+  input: AuthorizationInput,
+): Promise<string> {
+  const client = await getClient(input.client_id);
   if (!client) throwOAuthError(400, "invalid_client");
   if (!client.redirectUris.includes(input.redirect_uri)) {
     throwOAuthError(400, "invalid_redirect_uri");
@@ -91,11 +93,11 @@ export function beginMcpAuthorization(input: AuthorizationInput): string {
   return consentUrl.toString();
 }
 
-export function getMcpAuthorizationRequest(requestId: string) {
+export async function getMcpAuthorizationRequest(requestId: string) {
   const request = getAuthorizationRequest(requestId);
   if (!request) throwOAuthError(404, "invalid_or_expired_request");
 
-  const client = getClient(request.clientId);
+  const client = await getClient(request.clientId);
   if (!client) throwOAuthError(400, "invalid_client");
 
   return {
@@ -120,8 +122,8 @@ export async function decideMcpAuthorizationRequest(params: {
   const request = consumeAuthorizationRequest(params.requestId);
   if (!request) throwOAuthError(404, "invalid_or_expired_request");
 
-  const client = getClient(request.clientId);
-  if (!client || !client.redirectUris.includes(request.redirectUri)) {
+  const client = await getClient(request.clientId);
+  if (!client?.redirectUris.includes(request.redirectUri)) {
     throwOAuthError(400, "invalid_client");
   }
 
