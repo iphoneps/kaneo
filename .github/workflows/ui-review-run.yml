@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   plan:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     outputs:
@@ -52,6 +53,7 @@ jobs:
           retention-days: 1
 
   capture:
+    if: github.repository == 'usekaneo/kaneo'
     needs: plan
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 25
@@ -91,6 +93,7 @@ jobs:
           retention-days: 1
 
   review-and-post:
+    if: github.repository == 'usekaneo/kaneo'
     needs: [plan, capture]
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15

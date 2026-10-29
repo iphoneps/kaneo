@@ -21,7 +21,7 @@ jobs:
   publish:
     # npm provenance and trusted publishing require a GitHub-hosted runner.
     runs-on: ubuntu-26.04
-    if: ${{ github.event_name == 'push' || startsWith(github.event.release.tag_name, 'mcp-v') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (github.event_name == 'push' || startsWith(github.event.release.tag_name, 'mcp-v')) }}
     permissions:
       # gh release create needs contents: write; npm publish --provenance needs id-token: write.
       contents: write
@@ -118,6 +118,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   publish-registry:
+    if: github.repository == 'usekaneo/kaneo'
     needs: publish
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:

@@ -26,6 +26,7 @@ env:
 
 jobs:
   check:
+    if: github.repository == 'usekaneo/kaneo'
     name: Check and bundle
     runs-on: ubuntu-26.04
     permissions:
@@ -129,7 +130,7 @@ jobs:
   binaries:
     name: Compile ${{ matrix.platform }} binaries
     needs: check
-    if: needs.check.outputs.release_exists == 'false'
+    if: github.repository == 'usekaneo/kaneo' && (needs.check.outputs.release_exists == 'false')
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -212,7 +213,7 @@ jobs:
   release:
     name: Create GitHub release
     needs: [check, binaries]
-    if: needs.check.outputs.release_exists == 'false'
+    if: github.repository == 'usekaneo/kaneo' && (needs.check.outputs.release_exists == 'false')
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -269,7 +270,7 @@ jobs:
   homebrew:
     name: Update Homebrew tap
     needs: [check, release]
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.check.outputs.prerelease == 'false' && (needs.release.result == 'success' || needs.check.outputs.release_exists == 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && needs.check.result == 'success' && needs.check.outputs.prerelease == 'false' && (needs.release.result == 'success' || needs.check.outputs.release_exists == 'true')) }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -314,7 +315,7 @@ jobs:
   npm:
     name: Publish to npm
     needs: check
-    if: vars.CLI_NPM_PUBLISH == 'true'
+    if: github.repository == 'usekaneo/kaneo' && (vars.CLI_NPM_PUBLISH == 'true')
     runs-on: ubuntu-26.04
     permissions:
       contents: read

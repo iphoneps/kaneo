@@ -31,7 +31,7 @@ on:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.repository == 'usekaneo/kaneo' && (github.ref == 'refs/heads/main')
     name: ${{ matrix.name }}
     timeout-minutes: 45
     runs-on: blacksmith-4vcpu-ubuntu-2404

@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.repository == 'usekaneo/kaneo' && (github.ref == 'refs/heads/main')
     name: Build static site
     runs-on: blacksmith-4vcpu-ubuntu-2404
 
@@ -57,7 +57,7 @@ jobs:
           path: apps/site/out
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.repository == 'usekaneo/kaneo' && (github.ref == 'refs/heads/main')
     permissions:
       pages: write
       id-token: write

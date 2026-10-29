@@ -39,8 +39,10 @@ jobs:
     # Dependabot-triggered runs may receive a read-only token. CI completion
     # rechecks its PR using a token issued in the trusted workflow context.
     if: >-
+      github.repository == 'usekaneo/kaneo' && (
       (github.event_name != 'pull_request_target' || github.actor != 'dependabot[bot]') &&
       (github.event_name != 'workflow_run' || github.event.workflow_run.actor.login == 'dependabot[bot]')
+      )
     # Skipped CI-completion events must not replace queued policy rechecks.
     concurrency:
       group: contribution-eligibility

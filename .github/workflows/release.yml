@@ -30,6 +30,7 @@ permissions: {}
 
 jobs:
   plan:
+    if: github.repository == 'usekaneo/kaneo'
     name: Plan
     timeout-minutes: 15
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -98,7 +99,7 @@ jobs:
   verify-ci:
     name: Verify CI for release source
     needs: plan
-    if: ${{ !inputs.dry_run && needs.plan.outputs.version != '' }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!inputs.dry_run && needs.plan.outputs.version != '') }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 35
     permissions:
@@ -120,7 +121,7 @@ jobs:
   images:
     name: Images
     needs: [plan, verify-ci]
-    if: ${{ !inputs.dry_run && needs.plan.outputs.version != '' }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!inputs.dry_run && needs.plan.outputs.version != '') }}
     permissions:
       contents: read
       packages: write
@@ -137,7 +138,7 @@ jobs:
   chart:
     name: Chart
     needs: plan
-    if: ${{ !inputs.dry_run && needs.plan.outputs.version != '' }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!inputs.dry_run && needs.plan.outputs.version != '') }}
     permissions:
       contents: read
 
@@ -146,7 +147,7 @@ jobs:
   release:
     name: Release
     needs: [plan, images, chart]
-    if: ${{ !inputs.dry_run && needs.plan.outputs.version != '' }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!inputs.dry_run && needs.plan.outputs.version != '') }}
     timeout-minutes: 15
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
@@ -205,6 +206,7 @@ jobs:
           fi
 
   promote:
+    if: github.repository == 'usekaneo/kaneo'
     name: Promote
     needs: [plan, release]
     timeout-minutes: 15
@@ -244,6 +246,7 @@ jobs:
           done
 
   chart-publish:
+    if: github.repository == 'usekaneo/kaneo'
     name: Publish chart
     needs: [plan, promote]
     permissions:

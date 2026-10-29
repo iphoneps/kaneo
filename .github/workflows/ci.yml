@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   detect-pr-changes:
+    if: github.repository == 'usekaneo/kaneo'
     permissions:
       contents: read
       pull-requests: read
@@ -39,7 +40,7 @@ jobs:
 
   smoke:
     needs: detect-pr-changes
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && github.event_name == 'pull_request' && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true')) }}
     name: Chromium smoke tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
@@ -99,6 +100,7 @@ jobs:
         run: docker compose -f tests/e2e/compose.yml down --volumes
 
   peekareq-tests:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -115,6 +117,7 @@ jobs:
         working-directory: scripts/ui-review-bot
 
   slop-labeler-tests:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -131,6 +134,7 @@ jobs:
         working-directory: scripts/slop-labeler
 
   quality:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
     steps:
@@ -176,6 +180,7 @@ jobs:
         run: pnpm typecheck
 
   unit:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     steps:
@@ -208,6 +213,7 @@ jobs:
         run: pnpm test
 
   build:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     steps:
@@ -236,7 +242,7 @@ jobs:
 
   integration:
     needs: detect-pr-changes
-    if: ${{ !cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true')) }}
     timeout-minutes: 15
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
@@ -288,7 +294,7 @@ jobs:
 
   docker-build:
     needs: detect-pr-changes
-    if: ${{ !cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true')) }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
     steps:
@@ -354,6 +360,7 @@ jobs:
         run: docker compose --env-file /dev/null -p kaneo-ci -f scripts/ci/compose.yml --profile realtime --profile upgrade down -v
 
   workflows:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
@@ -396,7 +403,7 @@ jobs:
 
   storage:
     needs: detect-pr-changes
-    if: ${{ !cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true')) }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     steps:
@@ -436,7 +443,7 @@ jobs:
 
   split-images:
     needs: detect-pr-changes
-    if: ${{ !cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true') }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (!cancelled() && (needs.detect-pr-changes.result != 'success' || needs.detect-pr-changes.outputs.skip_expensive != 'true')) }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 20
     strategy:
@@ -462,7 +469,7 @@ jobs:
   secret-scan:
     # Scheduled runs get a dedicated full-history scan in nightly.yml instead,
     # so the default diff scan here does not duplicate the entire-branch scan.
-    if: ${{ github.event_name != 'schedule' }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (github.event_name != 'schedule') }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 10
     permissions:
@@ -551,7 +558,7 @@ jobs:
             || echo "::warning::Discord notification could not be delivered."
 
   ci-result:
-    if: ${{ always() }}
+    if: ${{ github.repository == 'usekaneo/kaneo' && (always()) }}
     needs: [detect-pr-changes, smoke, peekareq-tests, slop-labeler-tests, quality, unit, build, integration, docker-build, workflows, storage, split-images, secret-scan]
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:

@@ -27,13 +27,14 @@ env:
 
 jobs:
   validate:
+    if: github.repository == 'usekaneo/kaneo'
     permissions:
       contents: read
 
     uses: ./.github/workflows/helm-validate.yml # zizmor: ignore[self-repository] $/-syntax not parsed by pinned actionlint v1.7.12; revisit when supported
 
   publish:
-    if: github.ref == 'refs/heads/main' && inputs.version != ''
+    if: github.repository == 'usekaneo/kaneo' && (github.ref == 'refs/heads/main' && inputs.version != '')
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: validate
     permissions:

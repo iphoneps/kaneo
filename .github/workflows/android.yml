@@ -20,6 +20,7 @@ permissions:
 
 jobs:
   apk:
+    if: github.repository == 'usekaneo/kaneo'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 60
     steps:
