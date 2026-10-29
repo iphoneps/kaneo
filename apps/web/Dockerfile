@@ -1,14 +1,5 @@
-# syntax=docker/dockerfile:1
 # Build stage
 FROM --platform=$BUILDPLATFORM node:24.22.2-alpine AS builder
-
-# Sentry org/project are public identifiers (not secrets). The auth token
-# is the only real secret; it is mounted via `--mount=type=secret` during
-# the pnpm build step so it never lands in any layer or image metadata.
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
-ENV SENTRY_ORG=$SENTRY_ORG
-ENV SENTRY_PROJECT=$SENTRY_PROJECT
 
 # Install build dependencies in a single layer
 RUN apk add --no-cache python3 make g++ && \
@@ -44,12 +35,10 @@ RUN pnpm exec vp run --no-cache build
 
 # Build the application
 WORKDIR /app/apps/web
-# SENTRY_AUTH_TOKEN is optional: only mounted during container builds that
-# need it (e.g., the publish workflows). Local or CI builds without the
-# secret still succeed; the build just runs without it.
-RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN,required=false \
-    if [ -f /run/secrets/SENTRY_AUTH_TOKEN ]; then export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN)"; fi; \
-    pnpm exec vp run --no-cache build && find dist -type f -name '*.map' -delete
+# Railway's Dockerfile validation fails on upstream's optional
+# `--mount=type=secret` for the Sentry source map upload, so this fork builds
+# without it. Source maps are deleted, not uploaded.
+RUN pnpm exec vp run --no-cache build && find dist -type f -name '*.map' -delete
 
 # Production stage with specific version
 FROM nginx:1.30.6-alpine AS runtime
