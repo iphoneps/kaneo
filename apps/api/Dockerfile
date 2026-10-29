@@ -32,22 +32,25 @@ COPY packages/mcp ./packages/mcp
 COPY i18n ./i18n
 COPY apps/api ./apps/api
 
+# On Railway's builder, cached Vite+ tasks exit 1 before the command starts
+# and print nothing (the cache's file-access tracer is the likely cause).
+# Image builds start from scratch anyway, so run them uncached.
 # Build email package first
 WORKDIR /app/packages/email
-RUN pnpm run build
+RUN pnpm exec vp run --no-cache build
 
 # Build permissions package
 WORKDIR /app/packages/permissions
-RUN pnpm run build
+RUN pnpm exec vp run --no-cache build
 
 # Build importers package
 WORKDIR /app/packages/importers
-RUN pnpm run build
+RUN pnpm exec vp run --no-cache build
 
 # Fix TypeScript config and build API
 WORKDIR /app/apps/api
 RUN sed -i 's/"extends": "@kaneo\/typescript-config\/base.json"/"extends": "..\/..\/packages\/typescript-config\/base.json"/g' /app/apps/api/tsconfig.json && \
-  pnpm run build
+  pnpm exec vp run --no-cache build
 
 # Production dependencies stage - runs on the BUILD platform (native, no QEMU emulation).
 # All API runtime deps are pure JavaScript (bcrypt was replaced with bcryptjs), so the
