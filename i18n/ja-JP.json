@@ -516,7 +516,13 @@
 				"matchCode": "デバイスに表示されたコードと一致することを確認してください",
 				"deny": "拒否",
 				"approve": "承認",
-				"failed": "リクエストを更新できませんでした。もう一度お試しください。"
+				"failed": "リクエストを更新できませんでした。もう一度お試しください。",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "デバイスを接続しました",
@@ -536,7 +542,11 @@
 				"description": "サインイン後すぐにこのページに戻り、承認できます。",
 				"submit": "サインイン"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

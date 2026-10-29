@@ -521,7 +521,13 @@
 				"matchCode": "Bunun cihazınızdaki kodla eşleştiğini kontrol edin",
 				"deny": "Reddet",
 				"approve": "Onayla",
-				"failed": "İstek güncellenemedi. Tekrar deneyin."
+				"failed": "İstek güncellenemedi. Tekrar deneyin.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Cihaz bağlandı",
@@ -541,7 +547,11 @@
 				"description": "Onaylamak için hemen buraya geri döneceksiniz.",
 				"submit": "Giriş yap"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

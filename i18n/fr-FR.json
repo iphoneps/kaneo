@@ -526,7 +526,13 @@
 				"matchCode": "Vérifiez que ce code correspond à celui de votre appareil",
 				"deny": "Refuser",
 				"approve": "Approuver",
-				"failed": "Impossible de mettre à jour la demande. Réessayez."
+				"failed": "Impossible de mettre à jour la demande. Réessayez.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Appareil connecté",
@@ -546,7 +552,11 @@
 				"description": "Vous reviendrez ici juste après pour l'approuver.",
 				"submit": "Se connecter"
 			},
-			"openApp": "Ouvrir Kaneo"
+			"openApp": "Ouvrir Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

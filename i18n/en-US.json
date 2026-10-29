@@ -521,7 +521,17 @@
 				"matchCode": "Check that this matches your device",
 				"deny": "Deny",
 				"approve": "Approve",
-				"failed": "Couldn't update the request. Try again."
+				"failed": "Couldn't update the request. Try again.",
+				"client": "Requested by",
+				"scopes": "Access requested",
+				"noScopes": "Your Kaneo account",
+				"loading": "Loading the request…",
+				"otherAccount": "This request was opened by another account.",
+				"loadFailed": "Couldn't load this request. Try again."
+			},
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
 			},
 			"approved": {
 				"title": "Device connected",

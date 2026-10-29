@@ -521,7 +521,13 @@
 				"matchCode": "Βεβαιωθείτε ότι ταιριάζει με τον κωδικό στη συσκευή σας",
 				"deny": "Απόρριψη",
 				"approve": "Έγκριση",
-				"failed": "Δεν ήταν δυνατή η ενημέρωση του αιτήματος. Δοκιμάστε ξανά."
+				"failed": "Δεν ήταν δυνατή η ενημέρωση του αιτήματος. Δοκιμάστε ξανά.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Η συσκευή συνδέθηκε",
@@ -541,7 +547,11 @@
 				"description": "Θα επιστρέψετε αμέσως εδώ για να την εγκρίνετε.",
 				"submit": "Σύνδεση"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

@@ -516,7 +516,13 @@
 				"matchCode": "Kiểm tra xem mã này có khớp với mã trên thiết bị của bạn không",
 				"deny": "Từ chối",
 				"approve": "Phê duyệt",
-				"failed": "Không thể cập nhật yêu cầu. Hãy thử lại."
+				"failed": "Không thể cập nhật yêu cầu. Hãy thử lại.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Đã kết nối thiết bị",
@@ -536,7 +542,11 @@
 				"description": "Bạn sẽ quay lại đây ngay để phê duyệt.",
 				"submit": "Đăng nhập"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

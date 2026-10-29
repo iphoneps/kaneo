@@ -45,18 +45,32 @@ beforeEach(() => {
     isPending: false,
   };
   m.search = { user_code: "wdjb-mjht" };
-  m.device.mockResolvedValue({ data: {}, error: null });
+  m.device.mockResolvedValue({
+    data: {
+      user_code: "WDJBMJHT",
+      status: "pending",
+      client_id: "kaneo-mcp",
+      scope: "openid profile",
+    },
+    error: null,
+  });
   m.device.approve.mockResolvedValue({ data: {}, error: null });
   m.device.deny.mockResolvedValue({ data: {}, error: null });
 });
 afterEach(cleanup);
 
+async function enabledApproveButton() {
+  const approve = screen.getByRole("button", {
+    name: "auth:device.approve.approve",
+  });
+  await waitFor(() => expect(approve).not.toBeDisabled());
+  return approve;
+}
+
 it("shows the normalized code and confirms the approval in place", async () => {
   render(<Page />);
   expect(screen.getByText("WDJB-MJHT")).toBeInTheDocument();
-  fireEvent.click(
-    screen.getByRole("button", { name: "auth:device.approve.approve" }),
-  );
+  fireEvent.click(await enabledApproveButton());
   await waitFor(() =>
     expect(m.device.approve).toHaveBeenCalledWith({ userCode: "WDJBMJHT" }),
   );
@@ -84,12 +98,45 @@ it("keeps the request open when the server rejects the decision", async () => {
     error: { error_description: "Invalid user code" },
   });
   render(<Page />);
-  const approve = screen.getByRole("button", {
-    name: "auth:device.approve.approve",
-  });
+  const approve = await enabledApproveButton();
   fireEvent.click(approve);
+  await waitFor(() => expect(m.device.approve).toHaveBeenCalled());
   await waitFor(() => expect(approve).not.toBeDisabled());
   expect(screen.queryByText("auth:device.approved.description")).toBeNull();
+});
+
+it("shows the requesting client and scopes before approval", async () => {
+  render(<Page />);
+  expect(
+    await screen.findByText("auth:device.clients.kaneoMcp"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("kaneo-mcp")).toBeInTheDocument();
+  expect(screen.getByText("openid")).toBeInTheDocument();
+  expect(screen.getByText("profile")).toBeInTheDocument();
+  expect(m.device).toHaveBeenCalledWith({ query: { user_code: "WDJBMJHT" } });
+});
+
+it("keeps Approve disabled until the request has loaded", () => {
+  m.device.mockReturnValue(new Promise(() => {}));
+  render(<Page />);
+  expect(
+    screen.getByRole("button", { name: "auth:device.approve.approve" }),
+  ).toBeDisabled();
+  expect(screen.getByText("auth:device.approve.loading")).toBeInTheDocument();
+});
+
+it("does not approve a request another account opened", async () => {
+  m.device.mockResolvedValue({
+    data: { user_code: "WDJBMJHT", status: "pending" },
+    error: null,
+  });
+  render(<Page />);
+  expect(
+    await screen.findByText("auth:device.approve.otherAccount"),
+  ).toHaveAttribute("role", "alert");
+  expect(
+    screen.getByRole("button", { name: "auth:device.approve.approve" }),
+  ).toBeDisabled();
 });
 
 it("sends signed-out visitors to sign in and back to this request", () => {

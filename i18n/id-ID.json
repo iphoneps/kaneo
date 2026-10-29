@@ -516,7 +516,13 @@
 				"matchCode": "Pastikan kode ini sama dengan yang ada di perangkat Anda",
 				"deny": "Tolak",
 				"approve": "Setujui",
-				"failed": "Tidak dapat memperbarui permintaan. Coba lagi."
+				"failed": "Tidak dapat memperbarui permintaan. Coba lagi.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Perangkat terhubung",
@@ -536,7 +542,11 @@
 				"description": "Anda akan langsung kembali ke sini untuk menyetujuinya.",
 				"submit": "Masuk"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

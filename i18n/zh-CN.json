@@ -516,7 +516,13 @@
 				"matchCode": "请确认此代码与设备上显示的一致",
 				"deny": "拒绝",
 				"approve": "批准",
-				"failed": "无法更新该请求，请重试。"
+				"failed": "无法更新该请求，请重试。",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "设备已连接",
@@ -536,7 +542,11 @@
 				"description": "登录后会立即返回此处进行批准。",
 				"submit": "登录"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

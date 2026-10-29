@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { AuthFormSkeleton } from "@/components/auth/auth-form-skeleton";
 import { AuthPage } from "@/components/auth/auth-page";
+import { DeviceRequestDetails } from "@/components/auth/device-request-details";
+import { useDeviceRequest } from "@/components/auth/use-device-request";
 import { useSettledSession } from "@/components/auth/use-settled-session";
 import {
   formatDeviceCode,
@@ -42,6 +44,13 @@ function DeviceApprovePage() {
   const [result, setResult] = useState<Decision | null>(null);
   const userCode = normalizeDeviceCode(search.user_code);
   const fromApp = search.from === "app";
+  const request = useDeviceRequest(
+    userCode,
+    !isSessionPending && Boolean(session?.user) && result === null,
+  );
+  // Approval waits until the requesting client and scopes are on screen.
+  const canApprove =
+    request.state === "ready" && request.request.status === "pending";
   const pageTitle = <PageTitle title={t("auth:device.approve.pageTitle")} />;
 
   if (result) {
@@ -175,6 +184,7 @@ function DeviceApprovePage() {
               {formatDeviceCode(userCode)}
             </p>
           </div>
+          <DeviceRequestDetails request={request} />
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
@@ -188,7 +198,7 @@ function DeviceApprovePage() {
             <Button
               size="lg"
               loading={pending === "approve"}
-              disabled={pending !== null}
+              disabled={pending !== null || !canApprove}
               onClick={() => void decide("approve")}
             >
               {t("auth:device.approve.approve")}

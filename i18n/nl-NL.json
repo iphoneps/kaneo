@@ -521,7 +521,13 @@
 				"matchCode": "Controleer of dit overeenkomt met de code op je apparaat",
 				"deny": "Weigeren",
 				"approve": "Goedkeuren",
-				"failed": "Het verzoek kon niet worden bijgewerkt. Probeer het opnieuw."
+				"failed": "Het verzoek kon niet worden bijgewerkt. Probeer het opnieuw.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Apparaat gekoppeld",
@@ -541,7 +547,11 @@
 				"description": "Daarna kom je meteen hier terug om het goed te keuren.",
 				"submit": "Inloggen"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

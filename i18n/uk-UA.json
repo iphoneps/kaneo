@@ -531,7 +531,13 @@
 				"matchCode": "Переконайтеся, що код збігається з кодом на пристрої",
 				"deny": "Відхилити",
 				"approve": "Підтвердити",
-				"failed": "Не вдалося оновити запит. Спробуйте ще раз."
+				"failed": "Не вдалося оновити запит. Спробуйте ще раз.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Пристрій підключено",
@@ -551,7 +557,11 @@
 				"description": "Одразу після входу ви повернетеся сюди, щоб підтвердити його.",
 				"submit": "Увійти"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

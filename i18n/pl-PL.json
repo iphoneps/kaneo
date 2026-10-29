@@ -531,7 +531,13 @@
 				"matchCode": "Sprawdź, czy kod zgadza się z tym na urządzeniu",
 				"deny": "Odrzuć",
 				"approve": "Zatwierdź",
-				"failed": "Nie udało się zaktualizować prośby. Spróbuj ponownie."
+				"failed": "Nie udało się zaktualizować prośby. Spróbuj ponownie.",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "Urządzenie połączone",
@@ -551,7 +557,11 @@
 				"description": "Zaraz potem wrócisz tutaj, aby je zatwierdzić.",
 				"submit": "Zaloguj się"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {

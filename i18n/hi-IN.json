@@ -521,7 +521,13 @@
 				"matchCode": "जाँचें कि यह आपके डिवाइस पर दिखे कोड से मेल खाता है",
 				"deny": "अस्वीकार करें",
 				"approve": "स्वीकृत करें",
-				"failed": "अनुरोध अपडेट नहीं हो सका। फिर से कोशिश करें।"
+				"failed": "अनुरोध अपडेट नहीं हो सका। फिर से कोशिश करें।",
+				"client": "Requested by",
+				"loadFailed": "Couldn't load this request. Try again.",
+				"loading": "Loading the request…",
+				"noScopes": "Your Kaneo account",
+				"otherAccount": "This request was opened by another account.",
+				"scopes": "Access requested"
 			},
 			"approved": {
 				"title": "डिवाइस कनेक्ट हो गया",
@@ -541,7 +547,11 @@
 				"description": "इसे स्वीकृत करने के लिए आप तुरंत यहीं वापस आएँगे।",
 				"submit": "साइन इन करें"
 			},
-			"openApp": "Open Kaneo"
+			"openApp": "Open Kaneo",
+			"clients": {
+				"kaneoCli": "Kaneo CLI",
+				"kaneoMcp": "Kaneo MCP server"
+			}
 		},
 		"mcp": {
 			"authorize": {
