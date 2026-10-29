@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapCustomOAuthProfileToUser } from "../../../apps/api/src/utils/custom-oauth-profile";
+import {
+  getCustomOAuthAccountSubject,
+  mapCustomOAuthProfileToUser,
+} from "../../../apps/api/src/utils/custom-oauth-profile";
 
 describe("mapCustomOAuthProfileToUser", () => {
   it("uses the provider name when present", () => {
@@ -44,5 +47,33 @@ describe("mapCustomOAuthProfileToUser", () => {
 
   it("returns an empty mapping when no usable display value exists", () => {
     expect(mapCustomOAuthProfileToUser({ email: "" })).toEqual({});
+  });
+});
+
+describe("getCustomOAuthAccountSubject", () => {
+  it("prefers the provider id", () => {
+    expect(
+      getCustomOAuthAccountSubject({ id: "user-1", sub: "subject-1" }),
+    ).toBe("user-1");
+  });
+
+  it("falls back to sub when the userinfo response has no id", () => {
+    expect(getCustomOAuthAccountSubject({ sub: "keycloak-user-id" })).toBe(
+      "keycloak-user-id",
+    );
+  });
+
+  it("stringifies numeric ids", () => {
+    expect(getCustomOAuthAccountSubject({ id: 42 })).toBe("42");
+  });
+
+  it("skips empty ids", () => {
+    expect(getCustomOAuthAccountSubject({ id: "", sub: "subject-1" })).toBe(
+      "subject-1",
+    );
+  });
+
+  it("returns an empty string when the provider sends no identifier", () => {
+    expect(getCustomOAuthAccountSubject({ id: null })).toBe("");
   });
 });

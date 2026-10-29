@@ -253,6 +253,13 @@
 			"when": 1787816979904,
 			"tag": "0035_persist_mcp_oauth_clients",
 			"breakpoints": true
+		},
+		{
+			"idx": 36,
+			"version": "7",
+			"when": 1793272371152,
+			"tag": "0036_better_auth_team_counters",
+			"breakpoints": true
 		}
 	]
 }

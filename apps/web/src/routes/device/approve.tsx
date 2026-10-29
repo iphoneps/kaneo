@@ -3,12 +3,11 @@ import {
   useNavigate,
   useSearch,
 } from "@tanstack/react-router";
-import { useState } from "react";
 import { z } from "zod/v4";
+import { DeviceApproval } from "@/components/auth/device-approval";
 import { AuthLayout } from "@/components/auth/layout";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { toast } from "@/lib/toast";
 
 const approveSearchSchema = z.object({
   user_code: z.string().optional(),
@@ -23,7 +22,6 @@ function DeviceApprovePage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/device/approve" });
   const { data: session, isPending } = authClient.useSession();
-  const [processing, setProcessing] = useState(false);
 
   const normalizedCode =
     search.user_code?.trim().replace(/-/g, "").toUpperCase() ?? "";
@@ -91,76 +89,15 @@ function DeviceApprovePage() {
     );
   }
 
-  const handleApprove = async () => {
-    setProcessing(true);
-    try {
-      // better-auth >= 1.6.11 requires the signed-in user to claim the code
-      // (GET /device) before it can be approved. No-op if already claimed.
-      await authClient.device({ query: { user_code: normalizedCode } });
-      const res = await authClient.device.approve({
-        userCode: normalizedCode,
-      });
-      if (res.error) {
-        toast.error(res.error.error_description ?? "Could not approve");
-        return;
-      }
-      toast.success("Device connected");
-      void navigate({ to: "/dashboard" });
-    } catch {
-      toast.error("Could not approve");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleDeny = async () => {
-    setProcessing(true);
-    try {
-      // Claim the code first (see handleApprove) so deny is authorized in
-      // better-auth >= 1.6.11.
-      await authClient.device({ query: { user_code: normalizedCode } });
-      const res = await authClient.device.deny({
-        userCode: normalizedCode,
-      });
-      if (res.error) {
-        toast.error(res.error.error_description ?? "Could not deny");
-        return;
-      }
-      toast.message("Request cancelled");
-      void navigate({ to: "/dashboard" });
-    } catch {
-      toast.error("Could not deny");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   return (
     <AuthLayout
       title="Approve device"
       subtitle="A device is requesting access to your Kaneo account."
     >
-      <div className="space-y-4">
-        <p className="text-center font-mono text-sm tracking-wide">
-          {normalizedCode}
-        </p>
-        <div className="flex gap-2">
-          <Button
-            className="flex-1"
-            disabled={processing}
-            onClick={() => void handleApprove()}
-          >
-            Approve
-          </Button>
-          <Button
-            variant="outline"
-            disabled={processing}
-            onClick={() => void handleDeny()}
-          >
-            Deny
-          </Button>
-        </div>
-      </div>
+      <DeviceApproval
+        userCode={normalizedCode}
+        onDone={() => void navigate({ to: "/dashboard" })}
+      />
     </AuthLayout>
   );
 }

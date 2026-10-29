@@ -148,6 +148,9 @@ export const teamTable = pgTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
+    // better-auth >= 1.7 keeps a member counter on the team row to enforce
+    // per-team member limits atomically.
+    memberCount: integer("member_count").default(0).notNull(),
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaceTable.id, { onDelete: "cascade" }),
@@ -169,6 +172,10 @@ export const teamMemberTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
+    // better-auth >= 1.7 writes a hash of (teamId, userId) here so concurrent
+    // adds cannot create duplicate memberships. Rows created before 1.7 keep
+    // NULL; better-auth falls back to the (teamId, userId) lookup for them.
+    membershipKey: text("membership_key").unique(),
     createdAt: timestamp("created_at"),
   },
   (table) => [

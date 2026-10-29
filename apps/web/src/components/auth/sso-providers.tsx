@@ -47,8 +47,8 @@ export function SSOProviders({
   const handleCustomOAuth = async () => {
     setLoadingProvider("custom");
     try {
-      const result = await authClient.signIn.oauth2({
-        providerId: "custom",
+      const result = await authClient.signIn.social({
+        provider: "custom",
         callbackURL,
         errorCallbackURL,
       });

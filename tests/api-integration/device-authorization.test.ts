@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
@@ -108,6 +108,100 @@ describe("API integration: device authorization (RFC 8628)", () => {
     expect(body.error).toBe("invalid_client");
   });
 
+  it("accepts the MCP and CLI clients with the default client allowlist", async () => {
+    // An empty DEVICE_AUTH_CLIENT_IDS falls back to the built-in allowlist.
+    vi.stubEnv("DEVICE_AUTH_CLIENT_IDS", "");
+    try {
+      const { app } = createApp();
+
+      for (const clientId of ["kaneo-mcp", "kaneo-cli"]) {
+        const res = await app.request("/api/auth/device/code", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Origin: origin,
+          },
+          body: JSON.stringify({ client_id: clientId }),
+        });
+
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(body.device_code).toEqual(expect.any(String));
+        expect(body.verification_uri).toBe(`${origin}/device`);
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("shows the requesting client and scope only to the user who claimed the code", async () => {
+    const { app } = createApp();
+
+    const codeRes = await app.request("/api/auth/device/code", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Origin: origin,
+      },
+      body: JSON.stringify({ client_id: "kaneo-cli", scope: "openid profile" }),
+    });
+    expect(codeRes.status).toBe(200);
+    const { user_code } = (await codeRes.json()) as { user_code: string };
+    const verifyPath = `/api/auth/device?user_code=${encodeURIComponent(user_code)}`;
+
+    const anonymousRes = await app.request(verifyPath, {
+      headers: { Origin: origin },
+    });
+    expect(anonymousRes.status).toBe(200);
+    const anonymousBody = (await anonymousRes.json()) as Record<
+      string,
+      unknown
+    >;
+    expect(anonymousBody.status).toBe("pending");
+    expect(anonymousBody).not.toHaveProperty("client_id");
+    expect(anonymousBody).not.toHaveProperty("scope");
+
+    const ownerCookie = await signUpAndGetCookie(
+      app,
+      `device-owner-${randomUUID()}@example.com`,
+      "device-flow-password-12345",
+    );
+    const ownerRes = await app.request(verifyPath, {
+      headers: { Origin: origin, Cookie: ownerCookie },
+    });
+    expect(ownerRes.status).toBe(200);
+    expect(await ownerRes.json()).toMatchObject({
+      user_code,
+      status: "pending",
+      client_id: "kaneo-cli",
+      scope: "openid profile",
+    });
+
+    const otherCookie = await signUpAndGetCookie(
+      app,
+      `device-other-${randomUUID()}@example.com`,
+      "device-flow-password-12345",
+    );
+    const otherRes = await app.request(verifyPath, {
+      headers: { Origin: origin, Cookie: otherCookie },
+    });
+    expect(otherRes.status).toBe(200);
+    const otherBody = (await otherRes.json()) as Record<string, unknown>;
+    expect(otherBody).not.toHaveProperty("client_id");
+    expect(otherBody).not.toHaveProperty("scope");
+
+    const otherApproveRes = await app.request("/api/auth/device/approve", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Origin: origin,
+        Cookie: otherCookie,
+      },
+      body: JSON.stringify({ userCode: user_code }),
+    });
+    expect(otherApproveRes.status).toBe(403);
+  });
+
   it("returns authorization_pending before approval", async () => {
     const { app } = createApp();
 
@@ -203,6 +297,13 @@ describe("API integration: device authorization (RFC 8628)", () => {
       },
     );
     expect(claimRes.status).toBe(200);
+    // better-auth >= 1.7 returns the requesting client to the user who claimed
+    // the code so the approval page can show it (GHSA-q84f-53jg-9ppm).
+    const claimBody = (await claimRes.json()) as Record<string, unknown>;
+    expect(claimBody).toMatchObject({
+      status: "pending",
+      client_id: "kaneo-cli",
+    });
 
     const approveRes = await app.request("/api/auth/device/approve", {
       method: "POST",

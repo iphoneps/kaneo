@@ -38,7 +38,10 @@ import db, { schema } from "./database";
 import { publishEvent } from "./events";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { checkWorkspaceName } from "./utils/check-workspace-name";
-import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
+import {
+  getCustomOAuthAccountSubject,
+  mapCustomOAuthProfileToUser,
+} from "./utils/custom-oauth-profile";
 import { generateDemoName } from "./utils/generate-demo-name";
 import { getInvitationEmailSubject } from "./utils/get-invitation-email-subject";
 import { getWorkspaceInvitationEmailCopy } from "./utils/get-workspace-invitation-email-copy";
@@ -238,7 +241,8 @@ export const auth = betterAuth({
     magicLink({
       // Hashed tokens stop an OAuth state value (stored plain in the
       // verification table) from verifying as a magic link and signing in as
-      // another user (GHSA-965c-763c-88jm). Remove once on better-auth >=1.7.7.
+      // another user (GHSA-965c-763c-88jm). better-auth >=1.7.7 also fixes this
+      // upstream; hashed tokens stay on as defence in depth.
       storeToken: "hashed",
       sendMagicLink: async ({ email, url }) => {
         try {
@@ -429,15 +433,20 @@ export const auth = betterAuth({
           providerId: "custom",
           clientId: process.env.CUSTOM_OAUTH_CLIENT_ID || "",
           clientSecret: process.env.CUSTOM_OAUTH_CLIENT_SECRET,
-          authorizationUrl: process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || "",
-          tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || "",
-          userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || "",
+          // Unset endpoints must be `undefined`, not "": better-auth >= 1.7 only
+          // fills an endpoint from the discovery document when it is nullish.
+          authorizationUrl:
+            process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || undefined,
+          tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || undefined,
+          userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || undefined,
           scopes: process.env.CUSTOM_OAUTH_SCOPES?.split(",")
             .map((s) => s.trim())
             .filter(Boolean) || ["profile", "email"],
           responseType: process.env.CUSTOM_OAUTH_RESPONSE_TYPE || "code",
-          discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || "",
+          discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || undefined,
           pkce: process.env.CUSTOM_AUTH_PKCE !== "false",
+          accountSubject: ({ profile }) =>
+            getCustomOAuthAccountSubject(profile),
           mapProfileToUser: mapCustomOAuthProfileToUser,
         },
       ],
