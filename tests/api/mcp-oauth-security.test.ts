@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { HTTPException } from "hono/http-exception";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => {
   const insertedSessions: Array<Record<string, unknown>> = [];
@@ -8,7 +9,7 @@ const mocks = vi.hoisted(() => {
     if (cookie.includes("victim_session=1")) {
       return {
         user: { id: "victim-user" },
-        session: { token: "victim-cookie-token" },
+        session: { id: "victim-session", token: "victim-cookie-token" },
       };
     }
     return null;
@@ -19,20 +20,77 @@ const mocks = vi.hoisted(() => {
       return row;
     }),
   }));
-  return { getSession, insert, insertedSessions };
+  const select = vi.fn(() => ({
+    from: () => ({
+      where: () => ({
+        limit: () => ({
+          for: async () => [
+            {
+              id: "victim-session",
+              expiresAt: new Date(Date.now() + 60_000),
+            },
+          ],
+        }),
+      }),
+    }),
+  }));
+  return { getSession, insert, select, insertedSessions };
 });
 
 vi.mock("../../apps/api/src/auth", () => ({
   auth: { api: { getSession: mocks.getSession } },
 }));
 
-vi.mock("../../apps/api/src/database", () => ({
-  default: { insert: mocks.insert },
+vi.mock("../../apps/api/src/database", async () => ({
+  default: {
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({ insert: mocks.insert, select: mocks.select }),
+  },
+  schema: await import("../../apps/api/src/database/schema"),
 }));
 
 vi.mock("../../apps/api/src/mcp/tools", () => ({
   registerMcpTools: vi.fn(),
 }));
+
+vi.mock("../../apps/api/src/mcp/oauth-store", () => {
+  const rows = new Map<string, { payload: unknown; expiresAt: Date }>();
+  const keyOf = (kind: string, key: string) => `${kind}:${key}`;
+  return {
+    putState: async (
+      kind: string,
+      key: string,
+      payload: unknown,
+      expiresAt: Date,
+      requestId?: string,
+    ) => {
+      if (requestId) {
+        if (!rows.delete(keyOf("request", requestId)))
+          throw new HTTPException(404);
+      }
+      rows.set(keyOf(kind, key), { payload, expiresAt });
+    },
+    getState: async (kind: string, key: string) => {
+      const row = rows.get(keyOf(kind, key));
+      if (!row) return null;
+      if (row.expiresAt.getTime() < Date.now()) return null;
+      return row.payload;
+    },
+    consumeState: async (kind: string, key: string) => {
+      const row = rows.get(keyOf(kind, key));
+      rows.delete(keyOf(kind, key));
+      if (!row) return null;
+      if (row.expiresAt.getTime() < Date.now()) return null;
+      return row.payload;
+    },
+    deleteExpiredStates: async () => {
+      const now = Date.now();
+      for (const [key, row] of rows) {
+        if (row.expiresAt.getTime() < now) rows.delete(key);
+      }
+    },
+  };
+});
 
 import mcpRoutes from "../../apps/api/src/mcp";
 import {
@@ -131,6 +189,66 @@ describe("MCP OAuth security", () => {
       }),
     });
     expect(remoteHttp.status).toBe(400);
+  });
+
+  it("accepts Claude-style registration metadata and never grants refresh tokens", async () => {
+    const response = await mcpRoutes.request("/mcp/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Claude",
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+        client_uri: "https://claude.ai",
+      }),
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      grant_types: ["authorization_code"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+    });
+  });
+
+  it("returns RFC 7591 JSON errors for invalid registration metadata", async () => {
+    const missingGrant = await mcpRoutes.request("/mcp/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["https://client.example/callback"],
+        grant_types: ["refresh_token"],
+      }),
+    });
+    expect(missingGrant.status).toBe(400);
+    await expect(missingGrant.json()).resolves.toMatchObject({
+      error: "invalid_client_metadata",
+    });
+
+    const badRedirect = await mcpRoutes.request("/mcp/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://attacker.example/callback"],
+      }),
+    });
+    expect(badRedirect.status).toBe(400);
+    await expect(badRedirect.json()).resolves.toMatchObject({
+      error: "invalid_redirect_uri",
+    });
+  });
+
+  it("returns RFC 6749 JSON errors for malformed authorization requests", async () => {
+    const response = await mcpRoutes.request(
+      "/mcp/authorize?response_type=code&client_id=x&redirect_uri=https%3A%2F%2Fclient.example%2Fcb&code_challenge=abc&code_challenge_method=plain",
+      { redirect: "manual" },
+    );
+    expect(response.status).toBe(400);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid_request",
+    });
   });
 
   it("requires an exact registered redirect URI", async () => {
@@ -296,25 +414,27 @@ describe("MCP OAuth security", () => {
     expect((await redeem(verifier)).status).toBe(400);
   });
 
-  it("sweeps expired authorization requests when creating a new one", () => {
+  it("sweeps expired authorization requests when creating a new one", async () => {
     const now = Date.now();
     vi.useFakeTimers();
     try {
       vi.setSystemTime(now);
-      const expiredRequestId = createAuthorizationRequest({
+      const expiredRequestId = await createAuthorizationRequest({
         clientId: "client-expired",
         redirectUri: "https://client.example/expired",
         codeChallenge: "challenge",
       });
 
       vi.setSystemTime(now + 10 * 60 * 1000 + 1);
-      createAuthorizationRequest({
+      await createAuthorizationRequest({
         clientId: "client-current",
         redirectUri: "https://client.example/current",
         codeChallenge: "challenge",
       });
 
-      expect(getAuthorizationRequest(expiredRequestId)).toBeUndefined();
+      await expect(
+        getAuthorizationRequest(expiredRequestId),
+      ).resolves.toBeNull();
     } finally {
       vi.useRealTimers();
     }

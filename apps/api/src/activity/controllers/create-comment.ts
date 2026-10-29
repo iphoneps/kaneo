@@ -12,7 +12,12 @@ import createNotification from "../../notification/controllers/create-notificati
 import { parseMentionIds } from "../../utils/parse-mentions";
 import { tokensToPlainText } from "../../utils/tokens-to-plain-text";
 
-async function createComment(taskId: string, userId: string, content: string) {
+async function createComment(
+  taskId: string,
+  userId: string,
+  content: string,
+  external?: { userName: string; source: string },
+) {
   const [activity] = await db
     .insert(activityTable)
     .values({
@@ -20,6 +25,12 @@ async function createComment(taskId: string, userId: string, content: string) {
       type: "comment",
       userId,
       content,
+      ...(external
+        ? {
+            externalUserName: external.userName,
+            externalSource: external.source,
+          }
+        : {}),
     })
     .returning();
 

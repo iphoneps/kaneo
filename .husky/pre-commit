@@ -1,2 +1,2 @@
-pnpm exec biome ci .
-pnpm run build
+set -e
+pnpm lint

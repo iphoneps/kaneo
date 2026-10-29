@@ -1,11 +1,24 @@
 import { DEFAULT_ROLE_NAMES } from "@kaneo/permissions";
-import { EllipsisIcon, MailIcon, ShieldIcon, TrashIcon } from "lucide-react";
+import {
+  CopyIcon,
+  EllipsisIcon,
+  MailIcon,
+  PencilIcon,
+  ShieldIcon,
+  TrashIcon,
+  MailXIcon,
+  UserMinusIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
 import useUpdateWorkspaceUserRole from "@/hooks/mutations/workspace-user/use-update-workspace-user-role";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
+import useGetMyProjectAccess from "@/hooks/queries/workspace-users/use-get-my-project-access";
+import useGetWorkspaceProjectAccess from "@/hooks/queries/workspace-users/use-get-workspace-project-access";
+import { useCopyInvitationLink } from "@/hooks/use-copy-invitation-link";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
@@ -44,6 +57,13 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import MemberProjectAccessDialog from "./member-project-access-dialog";
+import {
+  ALL_PROJECTS_ACCESS,
+  type ProjectAccessValue,
+} from "./project-access/project-access-value";
+import { findMemberProjectAccess } from "./project-access/find-member-project-access";
+import { getInvitationProjectAccess } from "./project-access/get-invitation-project-access";
 
 type Props = {
   workspaceId: string;
@@ -63,7 +83,7 @@ const AVATAR_TONES = [
   "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300",
 ] as const;
 
-// Names that are NOT "truly custom" — viewer/member/admin are seeded as
+// Names that are NOT "truly custom": viewer/member/admin are seeded as
 // editable workspace_role rows on every workspace creation, and owner is a
 // static built-in. The Select already lists them as built-ins, so we filter
 // them out of the custom-roles tail to avoid duplicate options.
@@ -90,6 +110,12 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   );
   const [invitationToCancel, setInvitationToCancel] =
     useState<WorkspaceUserInvitation | null>(null);
+  const [accessTarget, setAccessTarget] = useState<{
+    userId: string;
+    name: string;
+    access: ProjectAccessValue;
+  } | null>(null);
+  const [isAccessDialogOpen, setIsAccessDialogOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
   const { mutateAsync: deleteWorkspaceUser, isPending: isDeleting } =
@@ -97,12 +123,31 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const { mutateAsync: cancelInvitation, isPending: isCancelling } =
     useCancelInvitation();
   const { mutateAsync: updateMemberRole } = useUpdateWorkspaceUserRole();
+  const { copy: copyInvitationLink } = useCopyInvitationLink();
   const { data: allWorkspaceRoles = [] } = useWorkspaceRoles(workspaceId);
-  const { canManageTeam, canRemoveMembers, canInviteUsers } =
+  const { canManageTeam, canUpdateMembers, canRemoveMembers, canInviteUsers } =
     useWorkspacePermission();
   const canChangeRoles = Boolean(canManageTeam());
+  const canManageProjectAccess = Boolean(canUpdateMembers());
   const canRemove = Boolean(canRemoveMembers());
   const canInvite = Boolean(canInviteUsers());
+  const { data: projectAccessEntries } = useGetWorkspaceProjectAccess(
+    workspaceId,
+    canManageProjectAccess,
+  );
+  const { data: myAccess } = useGetMyProjectAccess(
+    workspaceId,
+    canManageProjectAccess,
+  );
+  const managerLimited = myAccess?.projectAccess === "selected";
+  const columnCount = canManageProjectAccess ? 5 : 4;
+
+  const describeAccess = (access: ProjectAccessValue) =>
+    access.projectAccess === "all"
+      ? t("team:projectAccess.allProjects")
+      : t("team:projectAccess.projectCount", {
+          count: access.projectIds.length,
+        });
 
   const customRoles = allWorkspaceRoles.filter(
     (role) => !RESERVED_ROLE_NAMES.has(role.role),
@@ -125,7 +170,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     if (role === member.role) return;
     try {
       await updateMemberRole({ workspaceId, memberId: member.id, role });
-      toast.success(t("team:membersTable.roleUpdateSuccess"));
+      toast.success(t("team:membersTable.roleUpdateSuccess"), {
+        icon: ShieldCheckIcon,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -142,7 +189,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         workspaceId,
         userId: memberToDelete.user.email,
       });
-      toast.success(t("team:membersTable.removeSuccess"));
+      toast.success(t("team:membersTable.removeSuccess"), {
+        icon: UserMinusIcon,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -161,7 +210,9 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         invitationId: invitationToCancel.id,
         workspaceId,
       });
-      toast.success(t("team:membersTable.cancelInviteSuccess"));
+      toast.success(t("team:membersTable.cancelInviteSuccess"), {
+        icon: MailXIcon,
+      });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -186,6 +237,11 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             <TableHead className="text-foreground font-medium">
               {t("team:membersTable.columns.role", { defaultValue: "Role" })}
             </TableHead>
+            {canManageProjectAccess ? (
+              <TableHead className="text-foreground font-medium">
+                {t("team:membersTable.columns.projects")}
+              </TableHead>
+            ) : null}
             <TableHead className="text-foreground font-medium">
               {t("team:membersTable.columns.joined", {
                 defaultValue: "Joined",
@@ -199,6 +255,17 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             const isSelf = currentUser?.id === member.userId;
             const showRoleSelect =
               canChangeRoles && !isSelf && member.role !== "owner";
+            const access =
+              member.role === "owner"
+                ? ALL_PROJECTS_ACCESS
+                : findMemberProjectAccess(projectAccessEntries, member.userId);
+            const showAccessEdit =
+              canManageProjectAccess &&
+              !isSelf &&
+              member.role !== "owner" &&
+              !(managerLimited && access.projectAccess === "all");
+            const accessLabel = describeAccess(access);
+            const memberName = member.user.name || member.user.email;
             const tone = toneFor(member.user.email);
             return (
               <TableRow key={member.user.email}>
@@ -213,9 +280,11 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         {getInitials(member.user.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
+                    {/* Capped on phones so the email truncates and the role column
+                        peeks in, hinting that the table scrolls sideways. */}
+                    <div className="min-w-0 max-w-[55vw] sm:max-w-none">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                        <span className="truncate text-sm font-medium">
                           {member.user.name}
                         </span>
                         {isSelf ? (
@@ -265,7 +334,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         {/* Owner is intentionally NOT offered here: the better-auth
                             organization plugin requires an explicit ownership
                             transfer flow (a workspace must have exactly one owner).
-                            That UI lives in workspace settings — TODO. */}
+                            That UI lives in workspace settings (TODO). */}
                         {customRoles.map((r) => (
                           <SelectItem key={r.id} value={r.role}>
                             {capitalize(r.role)}
@@ -281,8 +350,38 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                     </Badge>
                   )}
                 </TableCell>
+                {canManageProjectAccess ? (
+                  <TableCell className="py-3 text-sm text-muted-foreground">
+                    {!projectAccessEntries ? (
+                      "–"
+                    ) : showAccessEdit ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2 text-muted-foreground"
+                        aria-label={t("team:projectAccess.editAria", {
+                          name: memberName,
+                          access: accessLabel,
+                        })}
+                        onClick={() => {
+                          setAccessTarget({
+                            userId: member.userId,
+                            name: memberName,
+                            access,
+                          });
+                          setIsAccessDialogOpen(true);
+                        }}
+                      >
+                        {accessLabel}
+                        <PencilIcon className="size-3" />
+                      </Button>
+                    ) : (
+                      accessLabel
+                    )}
+                  </TableCell>
+                ) : null}
                 <TableCell className="py-3 text-sm text-muted-foreground tabular-nums">
-                  {member.createdAt ? formatDateMedium(member.createdAt) : "—"}
+                  {member.createdAt ? formatDateMedium(member.createdAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
                   {!isSelf && canRemove ? (
@@ -340,7 +439,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                             defaultValue: "Expires {{date}}",
                             date: formatDateMedium(invitation.expiresAt),
                           })
-                        : "—"}
+                        : "–"}
                     </div>
                   </div>
                 </div>
@@ -352,20 +451,46 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                   })}
                 </Badge>
               </TableCell>
+              {canManageProjectAccess ? (
+                <TableCell className="py-3 text-sm text-muted-foreground">
+                  {describeAccess(getInvitationProjectAccess(invitation))}
+                </TableCell>
+              ) : null}
               <TableCell className="py-3 text-sm text-muted-foreground">
-                —
+                –
               </TableCell>
               <TableCell className="pe-6 py-3 text-right">
                 {canInvite ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setInvitationToCancel(invitation)}
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    aria-label={t("team:membersTable.ariaCancelInvitation")}
-                  >
-                    <TrashIcon className="size-4" />
-                  </Button>
+                  <Menu>
+                    <MenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                          aria-label={t(
+                            "team:membersTable.ariaInvitationActions",
+                          )}
+                        />
+                      }
+                    >
+                      <EllipsisIcon className="size-4" />
+                    </MenuTrigger>
+                    <MenuPopup align="end">
+                      <MenuItem
+                        onClick={() => copyInvitationLink(invitation.id)}
+                      >
+                        <CopyIcon className="size-4" />
+                        {t("team:invitations.copyLink")}
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => setInvitationToCancel(invitation)}
+                      >
+                        <TrashIcon className="size-4" />
+                        {t("team:membersTable.cancelInvitation")}
+                      </MenuItem>
+                    </MenuPopup>
+                  </Menu>
                 ) : null}
               </TableCell>
             </TableRow>
@@ -373,7 +498,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
 
           {users.length === 0 && pendingInvitations.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="py-16 text-center">
+              <TableCell colSpan={columnCount} className="py-16 text-center">
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <p className="text-sm font-medium text-foreground">
                     {t("team:membersTable.emptyTitle")}
@@ -387,6 +512,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
           ) : null}
         </TableBody>
       </Table>
+
+      <MemberProjectAccessDialog
+        workspaceId={workspaceId}
+        open={isAccessDialogOpen}
+        member={accessTarget}
+        access={accessTarget?.access ?? ALL_PROJECTS_ACCESS}
+        onOpenChange={setIsAccessDialogOpen}
+      />
 
       <AlertDialog
         open={!!memberToDelete}
@@ -405,19 +538,25 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose disabled={isDeleting}>
-              <Button variant="outline" size="sm" disabled={isDeleting}>
-                {t("common:actions.cancel")}
-              </Button>
+            <AlertDialogClose
+              render={
+                <Button variant="outline" size="sm" disabled={isDeleting} />
+              }
+            >
+              {t("common:actions.cancel")}
             </AlertDialogClose>
             <AlertDialogClose
-              onClick={handleDeleteMember}
-              disabled={isDeleting}
+              render={
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isDeleting}
+                  onClick={handleDeleteMember}
+                />
+              }
             >
-              <Button variant="destructive" size="sm" disabled={isDeleting}>
-                <TrashIcon className="mr-2 size-4" />
-                {t("team:membersTable.removeMember")}
-              </Button>
+              <TrashIcon className="mr-2 size-4" />
+              {t("team:membersTable.removeMember")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -439,19 +578,25 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose disabled={isCancelling}>
-              <Button variant="outline" size="sm" disabled={isCancelling}>
-                {t("common:actions.cancel")}
-              </Button>
+            <AlertDialogClose
+              render={
+                <Button variant="outline" size="sm" disabled={isCancelling} />
+              }
+            >
+              {t("common:actions.cancel")}
             </AlertDialogClose>
             <AlertDialogClose
-              onClick={handleCancelInvitation}
-              disabled={isCancelling}
+              render={
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={isCancelling}
+                  onClick={handleCancelInvitation}
+                />
+              }
             >
-              <Button variant="destructive" size="sm" disabled={isCancelling}>
-                <TrashIcon className="mr-2 size-4" />
-                {t("team:membersTable.cancelInvitation")}
-              </Button>
+              <TrashIcon className="mr-2 size-4" />
+              {t("team:membersTable.cancelInvitation")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>

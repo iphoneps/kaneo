@@ -12,7 +12,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogClose, DialogPopup } from "@/components/ui/dialog";
-import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
+import { usePublicTaskDescription } from "@/hooks/queries/task/use-public-task-description";
+import {
+  dueDateStatusColors,
+  getDueDateStatus,
+  isTaskCompleted,
+} from "@/lib/due-date-status";
 import { formatDateMedium, formatDateShort } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
@@ -29,6 +34,9 @@ type PublicTaskDetailModalProps = {
       })
     | null;
   projectSlug: string;
+  // The modal is opened from any column, so it resolves completion by slug
+  // rather than being told; without these it falls back to the slug heuristic.
+  columns?: Array<{ slug: string; isFinal: boolean }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -36,10 +44,18 @@ type PublicTaskDetailModalProps = {
 export function PublicTaskDetailModal({
   task,
   projectSlug,
+  columns,
   open,
   onOpenChange,
 }: PublicTaskDetailModalProps) {
+  const taskIsCompleted = isTaskCompleted(task?.status ?? "", columns);
   const { t } = useTranslation();
+  const descriptionQuery = usePublicTaskDescription(task, open);
+  const description = task?.descriptionDeferred
+    ? descriptionQuery.isError
+      ? undefined
+      : descriptionQuery.data
+    : task?.description;
 
   const getPRStatus = useMemo(
     () => (pr: { metadata?: { merged?: boolean; draft?: boolean } | null }) => {
@@ -124,18 +140,16 @@ export function PublicTaskDetailModal({
 
                 {task.dueDate && (
                   <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md ${dueDateStatusColors[getDueDateStatus(task.dueDate)]}`}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md ${dueDateStatusColors[getDueDateStatus(task.dueDate, taskIsCompleted)]}`}
                   >
-                    {getDueDateStatus(task.dueDate) === "overdue" && (
-                      <CalendarX className="w-3 h-3" />
-                    )}
-                    {getDueDateStatus(task.dueDate) === "due-soon" && (
-                      <CalendarClock className="w-3 h-3" />
-                    )}
-                    {(getDueDateStatus(task.dueDate) === "far-future" ||
-                      getDueDateStatus(task.dueDate) === "no-due-date") && (
-                      <Calendar className="w-3 h-3" />
-                    )}
+                    {getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                      "overdue" && <CalendarX className="w-3 h-3" />}
+                    {getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                      "due-soon" && <CalendarClock className="w-3 h-3" />}
+                    {(getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                      "far-future" ||
+                      getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                        "no-due-date") && <Calendar className="w-3 h-3" />}
                     <span>
                       {t("publicProject:taskDetail.dueWithDate", {
                         date: formatDateShort(task.dueDate),
@@ -161,9 +175,24 @@ export function PublicTaskDetailModal({
               </div>
             </div>
 
-            {task.description && (
+            {task.descriptionDeferred && descriptionQuery.isLoading && (
+              <p role="status">{t("tasks:descriptionLoading")}</p>
+            )}
+            {task.descriptionDeferred && descriptionQuery.isError && (
+              <p role="alert">
+                {t("tasks:descriptionLoadError")}{" "}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => void descriptionQuery.refetch()}
+                >
+                  {t("tasks:descriptionRetry")}
+                </button>
+              </p>
+            )}
+            {description && (
               <div className="pt-1">
-                <MarkdownRenderer content={task.description} />
+                <MarkdownRenderer content={description} />
               </div>
             )}
 

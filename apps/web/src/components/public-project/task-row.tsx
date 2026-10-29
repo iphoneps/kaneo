@@ -1,13 +1,18 @@
 import { Calendar, CalendarClock, CalendarX } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { TaskProgressBadges } from "@/components/task/task-progress-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
+import {
+  dueDateStatusColors,
+  getDueDateStatus,
+  isTaskCompleted,
+} from "@/lib/due-date-status";
 import { formatDateShort } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityIcon } from "@/lib/priority";
 import type { ExternalLink } from "@/types/external-link";
 import type Task from "@/types/task";
-import { PublicPRBadge } from "./public-pr-badge";
+import { TaskPullRequests } from "@/components/task/task-pull-requests";
 import { PublicTaskLabels } from "./public-task-labels";
 
 type PublicTaskRowProps = {
@@ -16,28 +21,34 @@ type PublicTaskRowProps = {
     externalLinks?: Array<ExternalLink>;
   };
   projectSlug: string;
+  // Passed by views that hold the column, so completion comes from isFinal
+  // rather than the slug fallback.
+  isCompleted?: boolean;
   onTaskClick: (task: Task) => void;
 };
 
 export function PublicTaskRow({
   task,
   projectSlug,
+  isCompleted,
   onTaskClick,
 }: PublicTaskRowProps) {
+  const taskIsCompleted = isCompleted ?? isTaskCompleted(task.status);
   const { t } = useTranslation();
   const labels = task.labels || [];
   const externalLinks = task.externalLinks || [];
 
   return (
-    <button
-      type="button"
-      className="group w-full text-left px-4 py-3 rounded-lg flex items-center gap-4 bg-card border border-border shadow-sm hover:shadow-md transition-[background-color,border-color,box-shadow] duration-200 ease-out hover:border-border/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
-      onClick={() => onTaskClick(task)}
-      aria-label={t("publicProject:taskCard.viewDetailsAria", {
-        title: task.title,
-      })}
-    >
-      <div className="flex-1 min-w-0 flex items-center gap-3">
+    <div className="group relative w-full text-left px-4 py-3 rounded-lg flex items-center gap-4 bg-card border border-border shadow-sm hover:shadow-md transition-[background-color,border-color,box-shadow] duration-200 ease-out hover:border-border/70 cursor-pointer">
+      <button
+        type="button"
+        className="absolute inset-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        onClick={() => onTaskClick(task)}
+        aria-label={t("publicProject:taskCard.viewDetailsAria", {
+          title: task.title,
+        })}
+      />
+      <div className="pointer-events-none flex-1 min-w-0 flex items-center gap-3">
         <div className="text-xs font-mono text-muted-foreground shrink-0 font-medium">
           {projectSlug}-{task.number}
         </div>
@@ -49,7 +60,8 @@ export function PublicTaskRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="pointer-events-none flex flex-wrap items-center gap-2">
+        <TaskProgressBadges task={task} asText />
         {task.assigneeName && (
           <div className="flex items-center gap-1.5">
             <Avatar className="h-5 w-5">
@@ -69,18 +81,18 @@ export function PublicTaskRow({
 
         {task.dueDate && (
           <div
-            className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${dueDateStatusColors[getDueDateStatus(task.dueDate)]}`}
+            className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${dueDateStatusColors[getDueDateStatus(task.dueDate, taskIsCompleted)]}`}
           >
-            {getDueDateStatus(task.dueDate) === "overdue" && (
+            {getDueDateStatus(task.dueDate, taskIsCompleted) === "overdue" && (
               <CalendarX className="w-3 h-3" />
             )}
-            {getDueDateStatus(task.dueDate) === "due-soon" && (
+            {getDueDateStatus(task.dueDate, taskIsCompleted) === "due-soon" && (
               <CalendarClock className="w-3 h-3" />
             )}
-            {(getDueDateStatus(task.dueDate) === "far-future" ||
-              getDueDateStatus(task.dueDate) === "no-due-date") && (
-              <Calendar className="w-3 h-3" />
-            )}
+            {(getDueDateStatus(task.dueDate, taskIsCompleted) ===
+              "far-future" ||
+              getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                "no-due-date") && <Calendar className="w-3 h-3" />}
             <span>{formatDateShort(task.dueDate)}</span>
           </div>
         )}
@@ -92,9 +104,14 @@ export function PublicTaskRow({
         )}
 
         {externalLinks.length > 0 && (
-          <PublicPRBadge externalLinks={externalLinks} />
+          <div className="pointer-events-auto relative">
+            <TaskPullRequests
+              externalLinks={externalLinks}
+              className="border-border bg-sidebar"
+            />
+          </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }

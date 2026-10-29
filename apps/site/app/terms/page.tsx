@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Footer } from "@/components/landing/footer";
 import { Navbar } from "@/components/landing/navbar";
+import { PageIntro } from "@/components/landing/page-intro";
+import { withSocialMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialMetadata({
   title: "Terms of Service",
-  description: "The terms that govern your use of Kaneo Cloud.",
+  description:
+    "The terms that govern your use of Kaneo Cloud: accounts, plans and billing, your content, acceptable use, and termination.",
   alternates: {
     canonical: "/terms",
   },
-};
+});
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -27,25 +30,25 @@ export default function TermsPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-        <section className="relative px-6 pt-14 pb-16 md:pt-20 md:pb-20">
+        <section className="relative px-6 pt-14 pb-16 md:pt-20 md:pb-20 lg:pt-24">
           <div className="mx-auto w-full max-w-6xl">
-            <div className="max-w-2xl pb-12">
-              <p className="font-medium text-primary text-sm">Legal</p>
-              <h1 className="mt-3 text-4xl font-medium leading-[1.06] md:text-5xl">
-                Terms of Service
-              </h1>
+            <PageIntro
+              eyebrow="Legal"
+              title="Terms of Service"
+              className="pb-12"
+            >
               <p className="mt-4 text-foreground/60 text-sm">
                 Last updated: July 28, 2026
               </p>
-              <p className="mt-5 text-foreground/85 text-base leading-relaxed">
+              <p className="mt-5 max-w-2xl text-muted-foreground text-base leading-relaxed">
                 These terms govern your use of the managed Kaneo Cloud service
                 at cloud.kaneo.app, operated by Andrej Acevski (sole proprietor,
-                North Macedonia), referred to as “we” or “us”. By creating an
-                account you agree to these terms. The open-source Kaneo software
-                itself is separately licensed under the MIT license, and
-                self-hosted installations are not covered by these terms.
+                Macedonia), referred to as “we” or “us”. By creating an account
+                you agree to these terms. The open-source Kaneo software itself
+                is separately licensed under the MIT license, and self-hosted
+                installations are not covered by these terms.
               </p>
-            </div>
+            </PageIntro>
 
             <Section title="1. The service">
               <p>
@@ -78,11 +81,11 @@ export default function TermsPage() {
                 . Paid plans start with a 14-day free trial. Payments are
                 processed by Creem as merchant of record. Creem is the seller of
                 record and handles payment collection, invoices, and applicable
-                taxes such as VAT. Subscriptions renew automatically (monthly or
-                annually) until cancelled. You can cancel anytime; your plan
-                remains active until the end of the paid period. If you believe
-                a charge is in error, contact us within 14 days and we will work
-                with you on a refund where appropriate.
+                taxes. Subscriptions renew automatically (monthly or annually)
+                until cancelled. You can cancel anytime; your plan remains
+                active until the end of the paid period. If you believe a charge
+                is in error, contact us within 14 days and we will work with you
+                on a refund where appropriate.
               </p>
               <p>
                 Accounts created before paid plans were introduced keep free
@@ -149,9 +152,8 @@ export default function TermsPage() {
               <p>
                 We may update these terms; material changes will be announced to
                 registered users by email at least 30 days in advance. These
-                terms are governed by the laws of North Macedonia, without
-                affecting mandatory consumer protections of your country of
-                residence.
+                terms are governed by the laws of Macedonia, without affecting
+                mandatory consumer protections of your country of residence.
               </p>
             </Section>
           </div>

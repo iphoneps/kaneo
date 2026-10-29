@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { type SyncRules, syncRulesSchema } from "../sync/rules";
 import { branchPatterns } from "../github/config";
 
 export { branchPatterns };
@@ -9,6 +10,9 @@ export const giteaConfigSchema = v.object({
   repositoryOwner: v.pipe(v.string(), v.trim(), v.nonEmpty()),
   repositoryName: v.pipe(v.string(), v.trim(), v.nonEmpty()),
   webhookSecret: v.optional(v.string()),
+  syncRules: v.optional(
+    v.custom<SyncRules>((value) => syncRulesSchema.safeParse(value).success),
+  ),
   branchPattern: v.optional(v.string()),
   customBranchRegex: v.optional(v.string()),
   commentTaskLinkOnGiteaIssue: v.optional(v.boolean()),
@@ -54,7 +58,22 @@ export const defaultGiteaConfig: Partial<GiteaConfig> = {
 };
 
 export function normalizeGiteaBaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, "");
+  const trimmed = url.trim().replace(/\/+$/, "");
+  const parsed = new URL(trimmed);
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("Gitea base URL must use http or https");
+  }
+
+  // A query or fragment would swallow the appended /api/v1/... path and let a
+  // caller aim the request at an arbitrary path on the target host.
+  if (parsed.search || parsed.hash || parsed.username || parsed.password) {
+    throw new Error(
+      "Gitea base URL must not contain a query, fragment, or credentials",
+    );
+  }
+
+  return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`;
 }
 
 export function getDefaultGiteaConfig(
