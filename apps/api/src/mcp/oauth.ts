@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import db from "../database";
-import { mcpOauthClientTable, sessionTable } from "../database/schema";
+import { sessionTable, userTable } from "../database/schema";
+import { notBannedCondition } from "../utils/user-ban";
+import { consumeState, getState, putState } from "./oauth-store";
 
 type RegisteredClient = {
   clientId: string;
@@ -14,9 +16,9 @@ type RegisteredClient = {
 type AuthCode = {
   clientId: string;
   userId: string;
+  sessionId: string;
   codeChallenge: string;
   redirectUri: string;
-  expiresAt: number;
 };
 
 export type AuthorizationRequest = {
@@ -24,53 +26,17 @@ export type AuthorizationRequest = {
   codeChallenge: string;
   redirectUri: string;
   state?: string;
-  expiresAt: number;
 };
 
-/*
- * Registered clients are persisted. They used to live in an in-memory Map, so
- * every API restart invalidated every client that had ever registered and
- * connected MCP clients failed re-authentication with `invalid_client`.
- *
- * Auth codes and authorization requests stay in memory deliberately: both
- * expire within minutes and are consumed by the same process that issued
- * them. If the API is ever run with more than one replica they will need
- * persisting too, because the authorize and callback legs can land on
- * different instances.
- */
-const codes = new Map<string, AuthCode>();
-const authorizationRequests = new Map<string, AuthorizationRequest>();
-const maxAuthorizationRequests = 10_000;
-
-function pruneAuthorizationRequests(now = Date.now()): void {
-  for (const [requestId, request] of authorizationRequests) {
-    if (request.expiresAt < now) authorizationRequests.delete(requestId);
-  }
-
-  while (authorizationRequests.size >= maxAuthorizationRequests) {
-    const oldestRequestId = authorizationRequests.keys().next().value;
-    if (!oldestRequestId) break;
-    authorizationRequests.delete(oldestRequestId);
-  }
-}
+// Clients re-register on invalid_client, so the TTL only bounds table growth.
+const clientTtlMs = 30 * 24 * 60 * 60 * 1000;
+const codeTtlMs = 5 * 60 * 1000;
+const requestTtlMs = 10 * 60 * 1000;
 
 export async function getClient(
   clientId: string,
-): Promise<RegisteredClient | undefined> {
-  const [row] = await db
-    .select()
-    .from(mcpOauthClientTable)
-    .where(eq(mcpOauthClientTable.clientId, clientId))
-    .limit(1);
-
-  if (!row) return undefined;
-
-  return {
-    clientId: row.clientId,
-    redirectUris: row.redirectUris,
-    clientName: row.clientName ?? undefined,
-    issuedAt: Math.floor(row.issuedAt.getTime() / 1000),
-  };
+): Promise<RegisteredClient | null> {
+  return getState<RegisteredClient>("client", clientId);
 }
 
 export async function registerClient(params: {
@@ -78,71 +44,59 @@ export async function registerClient(params: {
   clientName?: string;
 }): Promise<RegisteredClient> {
   const clientId = randomUUID();
-  const issuedAt = new Date();
-
-  await db.insert(mcpOauthClientTable).values({
-    clientId,
-    redirectUris: [...params.redirectUris],
-    clientName: params.clientName ?? null,
-    issuedAt,
-  });
-
-  return {
+  const client: RegisteredClient = {
     clientId,
     redirectUris: [...params.redirectUris],
     clientName: params.clientName,
-    issuedAt: Math.floor(issuedAt.getTime() / 1000),
+    issuedAt: Math.floor(Date.now() / 1000),
   };
+  await putState(
+    "client",
+    clientId,
+    client,
+    new Date(Date.now() + clientTtlMs),
+  );
+  return client;
 }
 
-export function createAuthCode(params: {
-  clientId: string;
-  userId: string;
-  codeChallenge: string;
-  redirectUri: string;
-}): string {
+export async function createAuthCode(
+  params: AuthCode,
+  requestId?: string,
+): Promise<string> {
   const code = randomUUID();
-  codes.set(code, {
-    ...params,
-    expiresAt: Date.now() + 5 * 60 * 1000,
-  });
+  await putState(
+    "code",
+    code,
+    params,
+    new Date(Date.now() + codeTtlMs),
+    requestId,
+  );
   return code;
 }
 
-export function createAuthorizationRequest(params: {
-  clientId: string;
-  codeChallenge: string;
-  redirectUri: string;
-  state?: string;
-}): string {
-  pruneAuthorizationRequests();
+export async function createAuthorizationRequest(
+  params: AuthorizationRequest,
+): Promise<string> {
   const requestId = randomUUID();
-  authorizationRequests.set(requestId, {
-    ...params,
-    expiresAt: Date.now() + 10 * 60 * 1000,
-  });
+  await putState(
+    "request",
+    requestId,
+    params,
+    new Date(Date.now() + requestTtlMs),
+  );
   return requestId;
 }
 
-export function getAuthorizationRequest(
+export async function getAuthorizationRequest(
   requestId: string,
-): AuthorizationRequest | undefined {
-  const request = authorizationRequests.get(requestId);
-  if (!request) return undefined;
-  if (request.expiresAt < Date.now()) {
-    authorizationRequests.delete(requestId);
-    return undefined;
-  }
-  return request;
+): Promise<AuthorizationRequest | null> {
+  return getState<AuthorizationRequest>("request", requestId);
 }
 
-export function consumeAuthorizationRequest(
+export async function consumeAuthorizationRequest(
   requestId: string,
-): AuthorizationRequest | undefined {
-  const request = getAuthorizationRequest(requestId);
-  if (!request) return undefined;
-  authorizationRequests.delete(requestId);
-  return request;
+): Promise<AuthorizationRequest | null> {
+  return consumeState<AuthorizationRequest>("request", requestId);
 }
 
 function base64url(buf: Buffer): string {
@@ -160,26 +114,50 @@ export async function exchangeCode(
   codeVerifier: string,
   redirectUri: string,
 ): Promise<{ accessToken: string; expiresIn: number } | null> {
-  const stored = codes.get(code);
+  const stored = await consumeState<AuthCode>("code", code);
   if (!stored) return null;
-  codes.delete(code);
 
   if (stored.clientId !== clientId) return null;
   if (stored.redirectUri !== redirectUri) return null;
-  if (stored.expiresAt < Date.now()) return null;
   if (!verifyPkce(codeVerifier, stored.codeChallenge)) return null;
 
-  const sessionToken = randomUUID();
-  const expiresIn = 30 * 24 * 60 * 60;
+  // Session insertion bypasses Better Auth's hooks. Revoking the approving
+  // session must also retire its outstanding authorization codes.
+  if (!stored.sessionId) return null;
+  return db.transaction(async (tx) => {
+    // Session deletions in the auth adapter lock this user before their
+    // DELETE statement, so revocation cannot miss this transaction's insert.
+    const [user] = await tx
+      .select({ id: userTable.id })
+      .from(userTable)
+      .where(and(eq(userTable.id, stored.userId), notBannedCondition()))
+      .limit(1)
+      .for("update");
+    if (!user) return null;
+    const [approver] = await tx
+      .select({ id: sessionTable.id, expiresAt: sessionTable.expiresAt })
+      .from(sessionTable)
+      .where(
+        and(
+          eq(sessionTable.id, stored.sessionId),
+          eq(sessionTable.userId, stored.userId),
+          gt(sessionTable.expiresAt, new Date()),
+        ),
+      )
+      .limit(1)
+      .for("update");
+    if (!approver || approver.expiresAt <= new Date()) return null;
 
-  await db.insert(sessionTable).values({
-    id: createId(),
-    token: sessionToken,
-    userId: stored.userId,
-    expiresAt: new Date(Date.now() + expiresIn * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    const sessionToken = randomUUID();
+    const expiresIn = 30 * 24 * 60 * 60;
+    await tx.insert(sessionTable).values({
+      id: createId(),
+      token: sessionToken,
+      userId: stored.userId,
+      expiresAt: new Date(Date.now() + expiresIn * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    return { accessToken: sessionToken, expiresIn };
   });
-
-  return { accessToken: sessionToken, expiresIn };
 }

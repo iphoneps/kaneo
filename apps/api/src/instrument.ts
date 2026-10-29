@@ -1,10 +1,47 @@
 import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import { readAppVersion } from "./app-version";
+import { isSensitiveOutboundRequest } from "./utils/sensitive-outbound";
+
+function parseSampleRate(value: string | undefined) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0;
+}
+
+const tracesSampleRate = parseSampleRate(process.env.SENTRY_TRACES_SAMPLE_RATE);
+
+const profilesSampleRate = parseSampleRate(
+  process.env.SENTRY_PROFILES_SAMPLE_RATE,
+);
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment:
       process.env.SENTRY_ENVIRONMENT ?? process.env.NODE_ENV ?? "production",
-    sendDefaultPii: false,
+    release: process.env.SENTRY_RELEASE ?? readAppVersion() ?? undefined,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+    },
+    tracesSampleRate,
+    profileSessionSampleRate: profilesSampleRate,
+    profileLifecycle: "trace",
+    integrations: [
+      nodeProfilingIntegration(),
+      Sentry.httpIntegration({
+        ignoreOutgoingRequests: isSensitiveOutboundRequest,
+      }),
+      Sentry.nativeNodeFetchIntegration({
+        ignoreOutgoingRequests: isSensitiveOutboundRequest,
+      }),
+    ],
   });
 }

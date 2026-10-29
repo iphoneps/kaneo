@@ -4,12 +4,13 @@ import {
   anonymousClient,
   deviceAuthorizationClient,
   emailOTPClient,
-  genericOAuthClient,
   inferAdditionalFields,
+  inferOrgAdditionalFields,
   lastLoginMethodClient,
   magicLinkClient,
   organizationClient,
 } from "better-auth/client/plugins";
+import type { AccessControl } from "better-auth/plugins/access";
 import { createAuthClient } from "better-auth/react";
 import { ac, admin, member, owner, viewer } from "./permissions";
 
@@ -32,7 +33,10 @@ export const authClient = createAuthClient({
     magicLinkClient(),
     emailOTPClient(),
     organizationClient({
-      ac,
+      // Same widening as the server plugin in `apps/api/src/auth.ts`: our
+      // narrow `statement` shape makes `ac`'s inferred `newRole` generic
+      // incompatible with better-auth's looser `AccessControl` type.
+      ac: ac as AccessControl,
       roles: {
         viewer,
         member,
@@ -42,8 +46,23 @@ export const authClient = createAuthClient({
       dynamicAccessControl: {
         enabled: true,
       },
+      schema: inferOrgAdditionalFields({
+        invitation: {
+          additionalFields: {
+            projectAccess: {
+              type: "string",
+              input: true,
+              required: false,
+            },
+            projectIds: {
+              type: "string[]",
+              input: true,
+              required: false,
+            },
+          },
+        },
+      }),
     }),
-    genericOAuthClient(),
     deviceAuthorizationClient(),
     apiKeyClient(),
     adminClient(),

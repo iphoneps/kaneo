@@ -1,9 +1,9 @@
-name: Update Contributors
+name: Update Sponsors
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 2 * * *'
   push:
     branches:
       - main
@@ -12,26 +12,22 @@ on:
 
 jobs:
   update-contributors:
-    runs-on: ubuntu-latest
+    if: github.repository == 'usekaneo/kaneo' && (github.ref == 'refs/heads/main')
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
-      pull-requests: write
+      pull-requests: read
+
+    outputs:
+      pushed: ${{ steps.commit.outputs.pushed }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Generate Contributors Images
-        uses: jaywcjlove/github-action-contributors@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filter-author: (renovate\[bot\]|renovate-bot|dependabot\[bot\])
-          output: CONTRIBUTORS.svg
-          avatarSize: 42
+        uses: useblacksmith/checkout@25227e61ff9dafe400e22fa487b673eac4e4409a # v1
 
       - name: Generate Sponsors Section
         if: ${{ github.repository_owner == 'usekaneo' }}
-        uses: JamesIves/github-sponsors-readme-action@v1
+        uses: JamesIves/github-sponsors-readme-action@02650b8cd445fc16dfef73195f9c406dce041623 # v1
         with:
           token: ${{ secrets.GH_ANDREJ }}
           file: 'README.md'
@@ -45,9 +41,26 @@ jobs:
         run: node apps/site/scripts/sync-sponsors.mjs
 
       - name: Commit and Push Changes
+        id: commit
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add CONTRIBUTORS.svg README.md apps/site/constants/sponsors.json
-          git commit -m "docs: update contributors and sponsors" || exit 0
-          git push 
+          git add README.md apps/site/constants/sponsors.json
+          if git commit -m "docs: update sponsors"; then
+            git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-site:
+    needs: update-contributors
+    if: github.repository == 'usekaneo/kaneo' && (needs.update-contributors.outputs.pushed == 'true' && github.ref == 'refs/heads/main')
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      actions: write
+    steps:
+      - name: Deploy Site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-site.yml --repo "$GITHUB_REPOSITORY" --ref main

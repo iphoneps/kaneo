@@ -9,6 +9,7 @@ type ShikiCodeBlockOptions = {
   defaultLanguage: string;
   highlighter: Highlighter | null | (() => Highlighter | null);
   resolveLanguage: (language: string) => string;
+  detectLanguage: (code: string) => string | null;
   themeDark: string;
   themeLight: string;
 };
@@ -16,11 +17,13 @@ type ShikiCodeBlockOptions = {
 export const SHIKI_CODEBLOCK_REFRESH_META = "shiki-codeblock-refresh";
 const shikiPluginKey = new PluginKey("shiki-codeblock");
 
+export function isDarkTheme() {
+  if (typeof document === "undefined") return true;
+  return document.documentElement.classList.contains("dark");
+}
+
 function getCurrentTheme(options: ShikiCodeBlockOptions) {
-  if (typeof document === "undefined") return options.themeDark;
-  return document.documentElement.classList.contains("dark")
-    ? options.themeDark
-    : options.themeLight;
+  return isDarkTheme() ? options.themeDark : options.themeLight;
 }
 
 function resolveHighlighter(options: ShikiCodeBlockOptions) {
@@ -46,7 +49,7 @@ function getDecorations(doc: ProseMirrorNode, options: ShikiCodeBlockOptions) {
       const rawLanguage =
         (block.node.attrs.language as string | undefined) || "";
       const normalizedLanguage = options.resolveLanguage(
-        rawLanguage || options.defaultLanguage,
+        rawLanguage || options.detectLanguage(code) || options.defaultLanguage,
       );
       let tokensResult: ReturnType<Highlighter["codeToTokens"]>;
 
@@ -110,6 +113,7 @@ export const ShikiCodeBlock = Extension.create<ShikiCodeBlockOptions>({
       defaultLanguage: "text",
       highlighter: null,
       resolveLanguage: (language: string) => language,
+      detectLanguage: () => null,
       themeDark: "github-dark",
       themeLight: "github-light",
     };

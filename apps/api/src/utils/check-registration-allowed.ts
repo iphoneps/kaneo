@@ -1,6 +1,7 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import db from "../database";
 import { invitationTable, userTable, workspaceTable } from "../database/schema";
+import { getInstanceSettings } from "../instance-settings/get-instance-settings";
 
 type RegistrationCheckResult = {
   allowed: boolean;
@@ -16,36 +17,21 @@ type RegistrationCheckResult = {
   };
 };
 
-type RegistrationCheckOptions = {
-  /**
-   * Allow a pending invitation to be matched on `email` alone, without an
-   * `invitationId`.
-   *
-   * Only pass `true` when the email has been verified by a trusted identity
-   * provider. A password signup lets the caller choose any email they like, so
-   * matching on email there would let anyone who knows an invited address
-   * register as that person and accept their invitation.
-   *
-   * See the call site in `auth.ts` for why OAuth signups need this.
-   */
-  allowEmailMatch?: boolean;
-};
-
 export async function checkRegistrationAllowed(
   email?: string,
   invitationId?: string,
-  { allowEmailMatch = false }: RegistrationCheckOptions = {},
+  options?: { allowInvitationByEmail?: boolean; emailVerified?: boolean },
 ): Promise<RegistrationCheckResult> {
-  const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
-
-  if (!isRegistrationDisabled) {
+  if ((await getInstanceSettings()).registrationEnabled) {
     return {
       allowed: true,
       reason: "Registration is enabled",
     };
   }
 
-  const canMatchByEmail = allowEmailMatch && Boolean(email);
+  const canMatchByEmail = Boolean(
+    options?.allowInvitationByEmail && options.emailVerified === true && email,
+  );
 
   if (!invitationId && !canMatchByEmail) {
     return {
@@ -55,9 +41,7 @@ export async function checkRegistrationAllowed(
     };
   }
 
-  const invitation = await findValidInvitation(email, invitationId, {
-    allowEmailMatch: canMatchByEmail,
-  });
+  const invitation = await findValidInvitation(email, invitationId);
 
   if (!invitation) {
     return {
@@ -77,7 +61,6 @@ export async function checkRegistrationAllowed(
 async function findValidInvitation(
   email?: string,
   invitationId?: string,
-  { allowEmailMatch = false }: RegistrationCheckOptions = {},
 ): Promise<RegistrationCheckResult["invitation"] | null> {
   const now = new Date();
 
@@ -94,9 +77,7 @@ async function findValidInvitation(
     conditions.push(eq(invitationTable.email, email.toLowerCase()));
   }
 
-  // Without an invitationId the email is the only thing narrowing this query,
-  // so it must be both present and trusted.
-  if (!invitationId && !(allowEmailMatch && email)) {
+  if (!invitationId && !email) {
     return null;
   }
 
@@ -113,7 +94,11 @@ async function findValidInvitation(
     .from(invitationTable)
     .innerJoin(
       workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
+      and(
+        eq(invitationTable.workspaceId, workspaceTable.id),
+        // Invitations to archived workspaces cannot be used.
+        isNull(workspaceTable.archivedAt),
+      ),
     )
     .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
     .where(and(...conditions))
@@ -160,7 +145,11 @@ export async function getInvitationDetails(
     .from(invitationTable)
     .innerJoin(
       workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
+      and(
+        eq(invitationTable.workspaceId, workspaceTable.id),
+        // Invitations to archived workspaces cannot be used.
+        isNull(workspaceTable.archivedAt),
+      ),
     )
     .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
     .where(eq(invitationTable.id, invitationId))
@@ -216,6 +205,22 @@ export async function getInvitationDetails(
   };
 }
 
+export async function userExistsByEmail(email: string): Promise<boolean> {
+  const [user] = await db
+    .select({ id: userTable.id })
+    .from(userTable)
+    .where(eq(userTable.email, email.toLowerCase()))
+    .limit(1);
+  return Boolean(user);
+}
+
+export async function canSendSignInEmail(email: string): Promise<boolean> {
+  if (await userExistsByEmail(email)) {
+    return true;
+  }
+  return (await getUserPendingInvitations(email)).length > 0;
+}
+
 export async function getUserPendingInvitations(userEmail: string) {
   const now = new Date();
 
@@ -233,7 +238,11 @@ export async function getUserPendingInvitations(userEmail: string) {
     .from(invitationTable)
     .innerJoin(
       workspaceTable,
-      eq(invitationTable.workspaceId, workspaceTable.id),
+      and(
+        eq(invitationTable.workspaceId, workspaceTable.id),
+        // Invitations to archived workspaces cannot be used.
+        isNull(workspaceTable.archivedAt),
+      ),
     )
     .innerJoin(userTable, eq(invitationTable.inviterId, userTable.id))
     .where(

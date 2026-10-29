@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { drainSignInEmails } from "../../apps/api/src/utils/sign-in-email-tasks";
 import { resetTestDatabase } from "./helpers/database";
 
 const { sendMagicLinkEmail } = vi.hoisted(() => ({
@@ -30,6 +31,8 @@ async function requestMagicLinkToken(
     body: JSON.stringify({ email, callbackURL: `${origin}/` }),
   });
   expect(res.status).toBe(200);
+  // Sign-in emails are queued so delivery time cannot reveal accounts.
+  await expect(drainSignInEmails()).resolves.toBe(true);
 
   const data = sendMagicLinkEmail.mock.calls.at(-1)?.[2] as
     | { magicLink: string }

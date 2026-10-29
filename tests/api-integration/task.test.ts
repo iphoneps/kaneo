@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
@@ -9,6 +9,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { readErrorBody } from "./helpers/error-body";
 
 describe("API integration: task creation", () => {
   beforeEach(async () => {
@@ -38,7 +39,10 @@ describe("API integration: task creation", () => {
     });
 
     expect(response.status).toBe(401);
-    await expect(response.text()).resolves.toBe("Unauthorized");
+    expect(await readErrorBody(response)).toMatchObject({
+      message: "Unauthorized",
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("creates a task with the matching column, assignee, and next number", async () => {
@@ -158,10 +162,11 @@ describe("API integration: task creation", () => {
       }),
     });
 
-    expect(response.status).toBe(403);
-    await expect(response.text()).resolves.toBe(
-      "You don't have access to this workspace",
-    );
+    expect(response.status).toBe(404);
+    expect(await readErrorBody(response)).toMatchObject({
+      message: "Project not found",
+      code: "NOT_FOUND",
+    });
 
     const persistedTask = await db.query.taskTable.findFirst({
       where: and(
@@ -280,4 +285,141 @@ describe("API integration: task creation", () => {
       position: 1,
     });
   });
+
+  it("rejects task creation for an assignee that cannot be assigned, without revealing whether the user exists", async () => {
+    const member = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const missingAssigneeId = `user-${randomUUID()}`;
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/${project.id}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Ghost assignee task",
+        description: "Should fail because the assignee does not exist",
+        priority: "low",
+        status: "to-do",
+        userId: missingAssigneeId,
+      }),
+    });
+
+    // A missing user and a non-member both answer 403 with the same message, so
+    // the endpoint cannot be used to probe which user ids exist.
+    expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toContain(
+      "Assignee is not a member of this workspace",
+    );
+
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: and(
+        eq(schema.taskTable.projectId, project.id),
+        eq(schema.taskTable.title, "Ghost assignee task"),
+      ),
+    });
+
+    expect(persistedTask).toBeUndefined();
+  });
+
+  it("creates a task when the assignee userId is surrounded by whitespace", async () => {
+    const member = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const paddedAssigneeId = `  ${member.user.id}  `;
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/task/${project.id}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Padded assignee task",
+        description: "Whitespace around userId should be trimmed",
+        priority: "medium",
+        status: "to-do",
+        userId: paddedAssigneeId,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      id: string;
+      userId: string;
+      assigneeName?: string;
+    };
+
+    expect(payload.userId).toBe(member.user.id);
+    expect(payload.assigneeName).toBe(member.user.name);
+
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, payload.id),
+    });
+
+    expect(persistedTask).toMatchObject({
+      id: payload.id,
+      projectId: project.id,
+      columnId: columns.todo.id,
+      userId: member.user.id,
+      title: "Padded assignee task",
+    });
+  });
+
+  it.each([
+    ["empty", ""],
+    ["whitespace only", "   "],
+  ])(
+    "creates an unassigned task when the assignee userId is %s",
+    async (label, userId) => {
+      const member = await createWorkspaceMember();
+      const { project } = await createProjectFixture({
+        workspaceId: member.workspace.id,
+      });
+
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+
+      const title = `Blank assignee task (${label})`;
+      const response = await app.request(`/api/task/${project.id}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description: "Blank userId means unassigned",
+          priority: "low",
+          status: "to-do",
+          userId,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        userId: string | null;
+        assigneeName?: string;
+      };
+
+      expect(payload.userId).toBeNull();
+      expect(payload.assigneeName).toBeUndefined();
+
+      const persistedTask = await db.query.taskTable.findFirst({
+        where: and(
+          eq(schema.taskTable.projectId, project.id),
+          eq(schema.taskTable.title, title),
+        ),
+      });
+
+      expect(persistedTask?.userId).toBeNull();
+    },
+  );
 });

@@ -2,7 +2,10 @@ import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
-import { publishEvent } from "../../events";
+import {
+  publishTaskMutation,
+  recordTaskMutation,
+} from "./task-mutation-effects";
 
 async function updateTaskTitle({
   id,
@@ -13,7 +16,7 @@ async function updateTaskTitle({
   title: string;
   currentUserId: string;
 }) {
-  const existingTask = await db.query.taskTable.findFirst({
+  let existingTask = await db.query.taskTable.findFirst({
     where: eq(taskTable.id, id),
   });
 
@@ -23,25 +26,39 @@ async function updateTaskTitle({
     });
   }
 
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({ title })
-    .where(eq(taskTable.id, id))
-    .returning();
+  if (existingTask.title === title) return existingTask;
 
-  if (!updatedTask) {
-    throw new HTTPException(500, {
-      message: "Failed to update task title",
-    });
-  }
+  // Audit history is not best-effort. Commit the title and its immutable
+  // history row atomically; event subscribers remain notifications/integrations
+  // only and cannot make the audit trail disappear.
+  const updatedTask = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(taskTable)
+      .where(eq(taskTable.id, id))
+      .for("update");
+    if (!locked) throw new HTTPException(404, { message: "Task not found" });
+    existingTask = locked;
 
-  await publishEvent("task.title_changed", {
-    taskId: updatedTask.id,
-    projectId: updatedTask.projectId,
-    userId: currentUserId,
-    oldTitle: existingTask.title,
-    newTitle: title,
-    type: "title_changed",
+    const [task] = await tx
+      .update(taskTable)
+      .set({ title })
+      .where(eq(taskTable.id, id))
+      .returning();
+
+    if (!task) {
+      throw new HTTPException(500, {
+        message: "Failed to update task title",
+      });
+    }
+
+    await recordTaskMutation(tx, existingTask, { title }, currentUserId);
+
+    return task;
+  });
+
+  await publishTaskMutation(existingTask, updatedTask, currentUserId, {
+    fields: ["title"],
   });
 
   return updatedTask;

@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { checkWorkspaceName } from "../../../apps/api/src/utils/check-workspace-name";
 
 describe("checkWorkspaceName", () => {
   it("accepts normal workspace names", () => {
     expect(checkWorkspaceName("Acme Inc.").ok).toBe(true);
-    expect(checkWorkspaceName("My Team — Project").ok).toBe(true);
+    expect(checkWorkspaceName("My Team – Project").ok).toBe(true);
     expect(checkWorkspaceName("Crypto Snack").ok).toBe(true);
   });
 
