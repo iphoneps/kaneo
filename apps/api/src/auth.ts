@@ -236,6 +236,10 @@ export const auth = betterAuth({
       : []),
     lastLoginMethod(),
     magicLink({
+      // Hashed tokens stop an OAuth state value (stored plain in the
+      // verification table) from verifying as a magic link and signing in as
+      // another user (GHSA-965c-763c-88jm). Remove once on better-auth >=1.7.7.
+      storeToken: "hashed",
       sendMagicLink: async ({ email, url }) => {
         try {
           const locale = await getUserLocale(email);
