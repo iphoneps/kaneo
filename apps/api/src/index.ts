@@ -43,6 +43,7 @@ import {
   validationHookWithMessage,
 } from "./errors/validation-error";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
+import { reconcileForkMigrationHistory } from "./database/reconcile-fork-migration-history";
 import { waitForDatabase } from "./database/wait-for-database";
 import discordIntegration from "./discord-integration";
 import { eventContext } from "./events";
@@ -1033,6 +1034,12 @@ export async function runStartupTasks() {
     runStartupMigrations: async () => {
       await migrateWorkspaceUserEmail();
       await migrateSessionColumn();
+
+      if (await reconcileForkMigrationHistory(getDatabase())) {
+        console.log(
+          "🔧 Removed the fork-only migration record 0035_persist_mcp_oauth_clients so upstream migrations apply in order",
+        );
+      }
 
       console.log("🔄 Migrating database...");
       await migrate(getDatabase(), {

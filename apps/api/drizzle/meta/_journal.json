@@ -512,6 +512,13 @@
       "when": 1793132486358,
       "tag": "0072_instance_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793277702911,
+      "tag": "0073_migrate_mcp_oauth_clients",
+      "breakpoints": true
     }
   ]
 }
