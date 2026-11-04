@@ -30,8 +30,8 @@ overrides:
   handlebars: ">=4.7.10 <5"
   engine.io: ">=6.6.11 <7"
   valibot: ">=1.5.0 <2"
-  better-auth: 1.7.14
-  "@better-auth/core": 1.7.14
+  better-auth: 1.7.16
+  "@better-auth/core": 1.7.16
   undici: ">=8.12.3 <9"
   js-yaml: ">=5.5.0 <6"
   "@babel/core@<8": ">=7.29.6 <8"
@@ -86,21 +86,22 @@ minimumReleaseAgeExclude:
   - "@aws-sdk/nested-clients@3.997.51"
   - "@aws-sdk/s3-request-presigner@3.1157.0"
   - "@aws-sdk/token-providers@3.1157.0"
-  - "@better-auth/api-key@1.7.14"
-  - "@better-auth/core@1.7.14"
-  - "@better-auth/drizzle-adapter@1.7.14"
-  - "@better-auth/kysely-adapter@1.7.14"
-  - "@better-auth/memory-adapter@1.7.14"
-  - "@better-auth/mongo-adapter@1.7.14"
-  - "@better-auth/prisma-adapter@1.7.14"
-  - "@better-auth/telemetry@1.7.14"
+  - "@better-auth/api-key@1.7.16"
+  - "@better-auth/core@1.7.16"
+  - "@better-auth/drizzle-adapter@1.7.16"
+  - "@better-auth/kysely-adapter@1.7.16"
+  - "@better-auth/memory-adapter@1.7.16"
+  - "@better-auth/mongo-adapter@1.7.16"
+  - "@better-auth/prisma-adapter@1.7.16"
+  - "@better-auth/telemetry@1.7.16"
   - "@smithy/core@3.37.0"
   - "@smithy/node-http-handler@4.13.0"
   - "@tanstack/query-core@5.105.0"
   - "@tanstack/query-devtools@5.105.0"
   - "@tanstack/react-query-devtools@5.105.0"
   - "@tanstack/react-query@5.105.0"
-  - better-auth@1.7.14
+  - better-auth@1.7.16
+  - better-call@1.4.5
   - croner@11.0.0
   - lucide-react-native@1.62.0
   - lucide-react@1.62.0
