@@ -224,7 +224,9 @@ overrides:
   vitest@*: 5.0.5
 
 patchedDependencies:
+  deepmerge@4.3.1: 1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd
   glob@13.0.6: 66abf90874f16fd3bd7b80a3b638c3a0283e08275a5653d3236638e12be7d9fe
+  minimatch@10.2.6: c6ace05290f134922778ebb104c5c287aa2cd9095feb0e76cb93230ad45a5239
   zod@3.25.76: 961e904f64170e793e7ee7ea99c70d9df6319e1807c59dfc2817051a075cacdd
 
 importers:
@@ -13316,7 +13318,7 @@ snapshots:
       '@expo/json-file': 11.2.1
       '@expo/platforms': 58.0.1
       '@expo/require-utils': 58.0.4(supports-color@8.1.1)(typescript@7.0.2)
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd)
       getenv: 2.0.0
       glob: 13.0.6(patch_hash=66abf90874f16fd3bd7b80a3b638c3a0283e08275a5653d3236638e12be7d9fe)
       resolve-workspace-root: 2.0.1
@@ -13365,7 +13367,7 @@ snapshots:
       getenv: 2.0.0
       glob: 13.0.6(patch_hash=66abf90874f16fd3bd7b80a3b638c3a0283e08275a5653d3236638e12be7d9fe)
       ignore: 5.3.2
-      minimatch: 10.2.6
+      minimatch: 10.2.6(patch_hash=c6ace05290f134922778ebb104c5c287aa2cd9095feb0e76cb93230ad45a5239)
       resolve-from: 5.0.0
       semver: 7.8.5
     transitivePeerDependencies:
@@ -16045,7 +16047,7 @@ snapshots:
       '@dotenvx/dotenvx': 1.52.0
       cn: 0.2.6
       code-block-writer: 13.0.3
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd)
       execa: 9.6.1
       fast-glob: 3.3.3
       fs-extra: 11.3.3
@@ -16731,7 +16733,7 @@ snapshots:
   '@ts-morph/common@0.27.0':
     dependencies:
       fast-glob: 3.3.3
-      minimatch: 10.2.6
+      minimatch: 10.2.6(patch_hash=c6ace05290f134922778ebb104c5c287aa2cd9095feb0e76cb93230ad45a5239)
       path-browserify: 1.0.1
 
   '@types/aria-query@5.0.4': {}
@@ -18342,7 +18344,7 @@ snapshots:
   deepmerge-ts@8.0.2:
     optional: true
 
-  deepmerge@4.3.1: {}
+  deepmerge@4.3.1(patch_hash=1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd): {}
 
   default-browser-id@5.0.1: {}
 
@@ -19239,7 +19241,7 @@ snapshots:
 
   glob@13.0.6(patch_hash=66abf90874f16fd3bd7b80a3b638c3a0283e08275a5653d3236638e12be7d9fe):
     dependencies:
-      minimatch: 10.2.6
+      minimatch: 10.2.6(patch_hash=c6ace05290f134922778ebb104c5c287aa2cd9095feb0e76cb93230ad45a5239)
       minipass: 7.1.3
       path-scurry: 2.0.2
 
@@ -19367,7 +19369,7 @@ snapshots:
   html-to-text@9.0.5:
     dependencies:
       '@selderee/plugin-htmlparser2': 0.11.0
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd)
       dom-serializer: 2.0.0
       htmlparser2: 8.0.2
       selderee: 0.11.0
@@ -20440,7 +20442,7 @@ snapshots:
 
   min-indent@1.0.1: {}
 
-  minimatch@10.2.6:
+  minimatch@10.2.6(patch_hash=c6ace05290f134922778ebb104c5c287aa2cd9095feb0e76cb93230ad45a5239):
     dependencies:
       brace-expansion: 5.0.12
 
@@ -22143,7 +22145,7 @@ snapshots:
       cn: 0.2.6
       commander: 14.0.3
       dedent: 1.7.1
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=1c94da6800b714f427f737b9a83d786f1714f07f8d8d1bc40b1a4653cc1382bd)
       diff: 9.0.0
       execa: 9.6.1
       fast-glob: 3.3.3

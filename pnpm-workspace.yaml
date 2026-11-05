@@ -48,9 +48,13 @@ overrides:
   vite@*: "catalog:"
   vitest@*: "catalog:"
 patchedDependencies:
+  # No deepmerge release fixes GHSA-gcqx-w48m-w2h4; skip __proto__ keys when merging.
+  deepmerge@4.3.1: patches/deepmerge@4.3.1.patch
   # Expo still needs glob 13; the abort fix only ships in glob 14 (GHSA-3g3m-2fjr-6pw4).
   # The patch also loads glob's unminified build so it uses the minimatch pinned above.
   glob@13.0.6: patches/glob@13.0.6.patch
+  # Expo, ts-morph and glob 13 need minimatch 10; the GHSA-g3hv-75wg-m249 limits ship in 11.0.1.
+  minimatch@10.2.6: patches/minimatch@10.2.6.patch
   # No upstream release yet; preserve the existing Zod 3 consumer APIs.
   zod@3.25.76: patches/zod@3.25.76.patch
 allowBuilds:

@@ -45,3 +45,13 @@ The CommonJS exports and Client methods consumed by get-uri remain available;
 the regression test verifies them and processes the pathological listing in a
 bounded child process. Remove this override once get-uri requests a fixed
 version and the lockfile resolves it without the override.
+
+## minimatch 9.0.9
+
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+(pattern amplification at `optimizationLevel` 2) is fixed only in minimatch
+11.0.1, while glob 10 under `archiver` requires minimatch 9. The checked-in pnpm
+patch backports the upstream change: `**/..` splitting stops at 100,000 patterns
+(minimatch 9 has no `braceExpandMax` option) and sets of more than 1,000 patterns
+are not deduped. `pnpm test:security` covers both limits. Remove the patch once
+the BrowserStack SDK resolves minimatch 11.0.1 or later.

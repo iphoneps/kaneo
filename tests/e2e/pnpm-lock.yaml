@@ -168,6 +168,7 @@ overrides:
 
 patchedDependencies:
   http-cache-semantics@4.3.0: 10f814373e15493e8a475041e5ecf67775717842648b0879b8c6c26055cfcfe9
+  minimatch@9.0.9: 9e912b2664a553ccebcc1c68ec1d8cb56f75d06aa92c94857529d5ec3c0c037f
 
 importers:
 
@@ -2978,7 +2979,7 @@ snapshots:
     dependencies:
       foreground-child: 3.3.1
       jackspeak: 3.4.3
-      minimatch: 9.0.9
+      minimatch: 9.0.9(patch_hash=9e912b2664a553ccebcc1c68ec1d8cb56f75d06aa92c94857529d5ec3c0c037f)
       minipass: 7.1.3
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
@@ -3320,7 +3321,7 @@ snapshots:
     dependencies:
       brace-expansion: 2.1.7
 
-  minimatch@9.0.9:
+  minimatch@9.0.9(patch_hash=9e912b2664a553ccebcc1c68ec1d8cb56f75d06aa92c94857529d5ec3c0c037f):
     dependencies:
       brace-expansion: 2.1.7
 
