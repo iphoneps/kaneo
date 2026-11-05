@@ -12,3 +12,5 @@ allowBuilds:
   protobufjs: false
 patchedDependencies:
   http-cache-semantics@4.3.0: patches/http-cache-semantics@4.3.0.patch
+  # glob 10 under browserstack-node-sdk needs minimatch 9; GHSA-g3hv-75wg-m249 limits ship in 11.0.1.
+  minimatch@9.0.9: patches/minimatch@9.0.9.patch
