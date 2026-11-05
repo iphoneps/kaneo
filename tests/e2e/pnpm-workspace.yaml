@@ -7,6 +7,7 @@ minimumReleaseAgeExclude:
   - browserstack-node-sdk@1.75.1
 overrides:
   "get-uri>basic-ftp": 6.2.3
+  follow-redirects: ">=1.16.2 <2"
 allowBuilds:
   protobufjs: false
 patchedDependencies:

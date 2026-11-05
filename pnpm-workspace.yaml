@@ -44,11 +44,14 @@ overrides:
   body-parser: ">=2.4.0 <3"
   source-map-js: ">=1.2.2 <2"
   katex: 0.19.1
+  node-forge: ">=1.4.3 <2"
   vite@*: "catalog:"
   vitest@*: "catalog:"
 patchedDependencies:
-  # No upstream release yet; preserve the existing Forge and Zod 3 consumer APIs.
-  node-forge@1.4.0: patches/node-forge@1.4.0.patch
+  # Expo still needs glob 13; the abort fix only ships in glob 14 (GHSA-3g3m-2fjr-6pw4).
+  # The patch also loads glob's unminified build so it uses the minimatch pinned above.
+  glob@13.0.6: patches/glob@13.0.6.patch
+  # No upstream release yet; preserve the existing Zod 3 consumer APIs.
   zod@3.25.76: patches/zod@3.25.76.patch
 allowBuilds:
   "@prisma/engines": false
