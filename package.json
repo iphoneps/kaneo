@@ -40,7 +40,7 @@
     "vite-plus": "catalog:"
   },
   "engines": {
-    "node": "^24.22.2 || >=26.0.0"
+    "node": "^24.22.3 || >=26.13.1"
   },
   "packageManager": "pnpm@12.15.0",
   "version": "2.48.0",
