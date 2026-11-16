@@ -94,11 +94,14 @@ describe("workspace invitation visibility", () => {
         role === "demoted-admin" ? {} : undefined,
       );
       for (const full of [false, true]) {
+        // Since better-auth 1.7.16 list-invitations itself refuses members
+        // without invitation:create; get-full-organization still answers and
+        // omits the invitations.
         expect(
           await invitations(
             viewer.cookies,
             full,
-            full && role === "demoted-admin" ? 403 : 200,
+            !full || role === "demoted-admin" ? 403 : 200,
           ),
         ).toEqual([]);
         expect(await invitations(owner.cookies, full)).toEqual([
